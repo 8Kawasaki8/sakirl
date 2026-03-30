@@ -232,6 +232,29 @@ def mail_feedback(naam, email, feedback_link, kapper_naam):
 </div>"""
     return stuur_email(email, f"Bedankt voor je bezoek bij {kapper_naam}!", html)
 
+def mail_bevestiging(naam, email, kapsel, datum, tijdslot, kapper_naam):
+    d = datetime.strptime(datum, '%Y-%m-%d')
+    dag_nl = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag']
+    mnd_nl = ['januari','februari','maart','april','mei','juni','juli',
+               'augustus','september','oktober','november','december']
+    datum_nl = f"{dag_nl[d.weekday()]} {d.day} {mnd_nl[d.month-1]} {d.year}"
+    html = f"""
+<div style="font-family:Georgia,serif;background:#faf8f5;padding:32px;">
+  <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;
+              padding:32px;border-top:4px solid #c9a84c;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+    <h2 style="color:#c9a84c;margin-bottom:4px;font-size:1.3rem;">Afspraak bevestigd</h2>
+    <p style="color:#78716c;">Hallo <strong style="color:#292524;">{naam}</strong>,</p>
+    <p style="color:#57534e;">Je afspraak bij <strong>{kapper_naam}</strong> is bevestigd.</p>
+    <div style="background:#faf8f5;border-radius:8px;padding:18px;margin:18px 0;border-left:3px solid #c9a84c;">
+      <p style="margin:5px 0;color:#292524;"><strong>Kapsel:</strong> {kapsel}</p>
+      <p style="margin:5px 0;color:#292524;"><strong>Datum:</strong> {datum_nl}</p>
+      <p style="margin:5px 0;color:#292524;"><strong>Tijd:</strong> {tijdslot}</p>
+    </div>
+    <p style="color:#78716c;font-size:0.9rem;">Tot dan! — {kapper_naam}</p>
+  </div>
+</div>"""
+    return stuur_email(email, f"Afspraak bevestigd bij {kapper_naam}", html)
+
 def dagelijkse_herinneringen():
     morgen = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
     kapper_naam = get_instelling('kapper_naam') or 'Uw Kapper'
@@ -398,7 +421,22 @@ def boeken_post():
 
     token = secrets.token_urlsafe(16)
     db = get_db()
-    cur = db.execute(
+    # Atomic conflict check binnen zelfde connectie (voorkomt race condition)
+    bestaand = db.execute(
+        "SELECT tijdslot, kapsel_duur FROM afspraken WHERE datum=? AND status!='geannuleerd'",
+        (datum,)
+    ).fetchall()
+    conflict = any(
+        slot_min(tijdslot) < slot_min(a['tijdslot']) + a['kapsel_duur'] and
+        slot_min(tijdslot) + kapsel_duur > slot_min(a['tijdslot'])
+        for a in bestaand
+    )
+    if conflict:
+        db.close()
+        flash('Dit tijdslot is net bezet geworden. Kies een ander tijdslot.', 'fout')
+        return redirect(url_for('boeken'))
+
+    db.execute(
         """INSERT INTO afspraken
            (naam, telefoon, email, kapsel_id, kapsel_naam, kapsel_duur, aangepast_kapsel_naam,
             datum, tijdslot, feedback_token)
@@ -409,6 +447,12 @@ def boeken_post():
     )
     db.commit()
     db.close()
+
+    # Stuur bevestigingsmail
+    if email:
+        kapper_naam = get_instelling('kapper_naam') or 'Uw Kapper'
+        mail_bevestiging(naam, email, kapsel_naam, datum, tijdslot, kapper_naam)
+
     return redirect(url_for('bevestiging', token=token))
 
 @app.route('/bevestiging/<token>')
@@ -421,6 +465,29 @@ def bevestiging(token):
     datum_nl = datum_nl_format(a['datum'])
     return render_template('bevestiging.html', afspraak=a, datum_nl=datum_nl,
                            kapper_naam=get_instelling('kapper_naam') or 'Uw Kapper')
+
+@app.route('/annuleer/<token>', methods=['GET', 'POST'])
+def annuleer(token):
+    db = get_db()
+    a = db.execute("SELECT * FROM afspraken WHERE feedback_token=?", (token,)).fetchone()
+    if not a:
+        db.close()
+        return redirect(url_for('index'))
+    kapper_naam = get_instelling('kapper_naam') or 'Uw Kapper'
+    if a['status'] == 'geannuleerd':
+        db.close()
+        return render_template('annuleer.html', afspraak=a, kapper_naam=kapper_naam, al_geannuleerd=True)
+    if a['datum'] < date.today().strftime('%Y-%m-%d'):
+        db.close()
+        return render_template('annuleer.html', afspraak=a, kapper_naam=kapper_naam, verleden=True)
+    if request.method == 'POST':
+        db.execute("UPDATE afspraken SET status='geannuleerd' WHERE id=?", (a['id'],))
+        db.commit()
+        db.close()
+        return render_template('annuleer.html', afspraak=a, kapper_naam=kapper_naam, bevestigd=True)
+    db.close()
+    return render_template('annuleer.html', afspraak=a, kapper_naam=kapper_naam,
+                           datum_nl=datum_nl_format(a['datum']))
 
 @app.route('/feedback/<token>', methods=['GET', 'POST'])
 def feedback(token):
@@ -715,6 +782,16 @@ def eigenaar_instellingen():
             if wacht:
                 set_instelling('smtp_wachtwoord', wacht)
             bericht = ('succes', 'E-mailinstellingen opgeslagen.')
+        elif actie == 'wachtwoord':
+            nieuw = request.form.get('nieuw_wachtwoord', '').strip()
+            bevestig = request.form.get('bevestig_wachtwoord', '').strip()
+            if not nieuw:
+                bericht = ('fout', 'Voer een nieuw wachtwoord in.')
+            elif nieuw != bevestig:
+                bericht = ('fout', 'Wachtwoorden komen niet overeen.')
+            else:
+                set_instelling('wachtwoord_hash', generate_password_hash(nieuw))
+                bericht = ('succes', 'Wachtwoord gewijzigd.')
 
     db = get_db()
     kapsels   = db.execute("SELECT * FROM kapsel_types WHERE actief=1 ORDER BY id").fetchall()

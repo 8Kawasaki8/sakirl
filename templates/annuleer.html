@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Afspraak annuleren — {{ kapper_naam }}{% endblock %}
+{% block content %}
+<div class="container bevestiging-wrap">
+  <div class="bevestiging-card">
+
+    {% if al_geannuleerd %}
+      <div class="check-icon" style="color:var(--muted);">✕</div>
+      <h1>Al geannuleerd</h1>
+      <p class="bevestiging-sub">Deze afspraak was al geannuleerd.</p>
+      <a href="/" class="btn">Terug naar home</a>
+
+    {% elif verleden %}
+      <div class="check-icon" style="color:var(--muted);">✕</div>
+      <h1>Niet meer mogelijk</h1>
+      <p class="bevestiging-sub">Deze afspraak is al geweest en kan niet meer geannuleerd worden.</p>
+      <a href="/" class="btn">Terug naar home</a>
+
+    {% elif bevestigd %}
+      <div class="check-icon">✓</div>
+      <h1>Afspraak geannuleerd</h1>
+      <p class="bevestiging-sub">Je afspraak is geannuleerd. Boek gerust een nieuwe afspraak.</p>
+      <a href="/boeken" class="btn">Nieuwe afspraak</a>
+
+    {% else %}
+      <div class="check-icon" style="color:var(--red);">✕</div>
+      <h1>Afspraak annuleren?</h1>
+      <p class="bevestiging-sub">Wil je deze afspraak annuleren?</p>
+      <div class="afspraak-detail" style="margin-bottom:24px;">
+        <div class="detail-rij">
+          <span class="detail-label">Kapsel</span>
+          <span class="detail-waarde">{{ afspraak.kapsel_naam }}</span>
+        </div>
+        <div class="detail-rij">
+          <span class="detail-label">Datum</span>
+          <span class="detail-waarde">{{ datum_nl }}</span>
+        </div>
+        <div class="detail-rij">
+          <span class="detail-label">Tijd</span>
+          <span class="detail-waarde">{{ afspraak.tijdslot }}</span>
+        </div>
+      </div>
+      <form method="POST" style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button type="submit" class="btn" style="background:var(--red);flex:1;">Ja, annuleer</button>
+        <a href="/" class="btn btn-ghost" style="flex:1;text-align:center;">Nee, ga terug</a>
+      </form>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

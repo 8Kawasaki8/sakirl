@@ -40,12 +40,13 @@
               <div class="af-meta" style="color:var(--gold);">Aangepast kapsel</div>
               {% endif %}
             </div>
-            <div class="af-status">
+            <div class="af-status" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
               <span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;
                            padding:3px 10px;border-radius:100px;
                            background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border);">
                 {{ a.status }}
               </span>
+              <a href="/annuleer/{{ a.feedback_token }}" style="font-size:0.75rem;color:var(--muted);">Annuleer</a>
             </div>
           </div>
           {% endfor %}

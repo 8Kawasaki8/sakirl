@@ -61,6 +61,25 @@
     <div id="test-email-resultaat" style="margin-top:12px;font-size:0.85rem;display:none;"></div>
   </div>
 
+  <!-- ── Wachtwoord ────────────────────────────────────────────────────────── -->
+  <div class="e-card instelling-sectie">
+    <div class="e-card-header"><h2>Wachtwoord wijzigen</h2></div>
+    <form method="POST">
+      <input type="hidden" name="actie" value="wachtwoord">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nieuw wachtwoord</label>
+          <input type="password" name="nieuw_wachtwoord" placeholder="••••••••" required>
+        </div>
+        <div class="form-group">
+          <label>Bevestig wachtwoord</label>
+          <input type="password" name="bevestig_wachtwoord" placeholder="••••••••" required>
+        </div>
+      </div>
+      <button type="submit" class="btn">Wachtwoord wijzigen</button>
+    </form>
+  </div>
+
   <!-- ── App installeren ────────────────────────────────────────────────────── -->
   <div class="e-card instelling-sectie">
     <div class="e-card-header"><h2>App op telefoon</h2></div>
