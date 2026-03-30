@@ -1,0 +1,157 @@
+{% extends 'eigenaar/base.html' %}
+{% set actief = 'dashboard' %}
+{% block title %}Dashboard — {{ kapper_naam }}{% endblock %}
+
+{% block content %}
+<div class="e-container">
+  <div class="e-page-header">
+    <h1>Dashboard</h1>
+    <p class="e-sub">{{ vandaag }}</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card gold">
+      <div class="stat-getal">{{ totaal_vandaag }}</div>
+      <div class="stat-label">Vandaag</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-getal">{{ totaal_week }}</div>
+      <div class="stat-label">Komende week</div>
+    </div>
+    <div class="stat-card gold">
+      <div class="stat-getal">€{{ "%.2f"|format(totaal_fooi) }}</div>
+      <div class="stat-label">Totale fooien</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn actief" onclick="toonTab('vandaag', this)">
+      Vandaag
+      {% if vandaag_af %}<span style="background:var(--gold);color:#fff;border-radius:100px;padding:1px 8px;font-size:0.7rem;margin-left:6px;">{{ vandaag_af|length }}</span>{% endif %}
+    </button>
+    <button class="tab-btn" onclick="toonTab('aankomend', this)">
+      Aankomend
+      {% if aankomend %}<span style="background:var(--border2);color:var(--muted);border-radius:100px;padding:1px 8px;font-size:0.7rem;margin-left:6px;">{{ aankomend|length }}</span>{% endif %}
+    </button>
+    <button class="tab-btn" onclick="toonTab('geschiedenis', this)">Geschiedenis</button>
+  </div>
+
+  <!-- Tab: Vandaag -->
+  <div class="tab-inhoud actief" id="tab-vandaag">
+    <div class="e-card">
+      {% if vandaag_af %}
+      <div class="afspraak-lijst">
+        {% for a in vandaag_af %}
+        <div class="afspraak-rij status-{{ a.status }}">
+          <div class="afspraak-tijd">
+            <div>{{ a.tijdslot }}</div>
+          </div>
+          <div class="afspraak-info">
+            <div class="afspraak-naam">{{ a.naam }}</div>
+            <div class="afspraak-meta">✂ {{ a.kapsel_naam }} · {{ a.kapsel_duur }} min</div>
+            {% if a.aangepast_kapsel_naam %}
+            <div class="afspraak-aangepast">Aangepast kapsel — bespreek duur in persoon</div>
+            {% endif %}
+            <div class="afspraak-meta">📱 {{ a.telefoon }}</div>
+            {% if a.email %}<div class="afspraak-meta">📧 {{ a.email }}</div>{% endif %}
+          </div>
+          <div class="afspraak-acties">
+            <span class="status-badge status-{{ a.status }}">{{ a.status }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="leeg-state">Geen afspraken vandaag.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Tab: Aankomend -->
+  <div class="tab-inhoud" id="tab-aankomend">
+    <div class="e-card">
+      {% if aankomend %}
+      <div class="afspraak-lijst">
+        {% for a in aankomend %}
+        <div class="afspraak-rij">
+          <div class="afspraak-tijd">
+            <div>{{ a.tijdslot }}</div>
+            <div class="afspraak-datum-klein">{{ a.datum }}</div>
+          </div>
+          <div class="afspraak-info">
+            <div class="afspraak-naam">{{ a.naam }}</div>
+            <div class="afspraak-meta">✂ {{ a.kapsel_naam }} · {{ a.kapsel_duur }} min</div>
+            {% if a.aangepast_kapsel_naam %}
+            <div class="afspraak-aangepast">Aangepast — bespreek duur in persoon</div>
+            {% endif %}
+            <div class="afspraak-meta">📱 {{ a.telefoon }}</div>
+          </div>
+          <div class="afspraak-acties">
+            <span class="status-badge status-{{ a.status }}">{{ a.status }}</span>
+            <button class="btn-klein btn-rood" onclick="annuleer({{ a.id }})">Annuleer</button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="leeg-state">Geen aankomende afspraken.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Tab: Geschiedenis -->
+  <div class="tab-inhoud" id="tab-geschiedenis">
+    <div class="e-card">
+      {% if geschiedenis %}
+      <div class="afspraak-lijst">
+        {% for a in geschiedenis %}
+        <div class="afspraak-rij status-{{ a.status }}">
+          <div class="afspraak-tijd">
+            <div>{{ a.tijdslot }}</div>
+            <div class="afspraak-datum-klein">{{ a.datum }}</div>
+          </div>
+          <div class="afspraak-info">
+            <div class="afspraak-naam">{{ a.naam }}</div>
+            <div class="afspraak-meta">✂ {{ a.kapsel_naam }}</div>
+            {% if a.beoordeling %}
+            <div class="afspraak-meta" style="color:var(--gold);">
+              {% for i in range(a.beoordeling) %}★{% endfor %}{% for i in range(5-a.beoordeling) %}☆{% endfor %}
+              {% if a.fooi_bedrag and a.fooi_bedrag > 0 %} · 💰 €{{ "%.2f"|format(a.fooi_bedrag) }}{% endif %}
+            </div>
+            {% endif %}
+          </div>
+          <div class="afspraak-acties">
+            <span class="status-badge status-{{ a.status }}">{{ a.status }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="leeg-state">Nog geen geschiedenis.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toonTab(naam, btn) {
+  document.querySelectorAll('.tab-inhoud').forEach(e => e.classList.remove('actief'));
+  document.querySelectorAll('.tab-btn').forEach(e => e.classList.remove('actief'));
+  document.getElementById('tab-' + naam).classList.add('actief');
+  btn.classList.add('actief');
+}
+
+async function annuleer(id) {
+  if (!confirm('Afspraak annuleren?')) return;
+  const res = await fetch(`/eigenaar/afspraken/${id}/status`, {
+    method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'status=geannuleerd'
+  });
+  if ((await res.json()).ok) location.reload();
+}
+</script>
+{% endblock %}

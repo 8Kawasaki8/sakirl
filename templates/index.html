@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}{{ kapper_naam }} — Online Reservatie{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <p class="hero-tagline">Makkelijk en snel te reserveren.</p>
+    <p class="hero-sub">Kies je kapsel, kies je dag en tijdslot — klaar in minder dan een minuut.</p>
+    <a href="/boeken" class="btn btn-lg">Maak een afspraak</a>
+    <div id="beoordeling-banner" style="display:none;margin-top:20px;">
+      <a id="beoordeling-link" href="#" class="btn btn-ghost btn-lg" style="border-color:var(--gold);color:var(--gold);">
+        Geef je beoordeling &amp; fooi
+      </a>
+    </div>
+  </div>
+  <div class="hero-scissors">✂</div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const token = localStorage.getItem('feedback_token');
+if (token) {
+  document.getElementById('beoordeling-link').href = `/feedback/${token}`;
+  document.getElementById('beoordeling-banner').style.display = 'block';
+}
+</script>
+{% endblock %}

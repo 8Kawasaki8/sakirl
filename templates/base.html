@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ kapper_naam }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <span class="logo-icon">✂</span>
+        <span class="logo-text">{{ kapper_naam }}</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/mijn-afspraken">Mijn afspraken</a>
+        <a href="/boeken" class="btn" style="padding:8px 18px;font-size:0.85rem;color:#fff;">Boek nu</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+        <div class="flash flash-{{ category }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <p>© {{ kapper_naam }} — Online reservaties</p>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

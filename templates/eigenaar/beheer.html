@@ -1,0 +1,180 @@
+{% extends 'eigenaar/base.html' %}
+{% set actief = 'beheer' %}
+{% block title %}Beheer — {{ kapper_naam }}{% endblock %}
+
+{% block content %}
+<div class="e-container">
+  <div class="e-page-header">
+    <h1>Beheer</h1>
+    <p class="e-sub">Beheer je kapseltypes en beschikbare tijdsloten.</p>
+  </div>
+
+  <!-- ── Kapsels ────────────────────────────────────────────────────────────── -->
+  <div class="e-card beheer-sectie">
+    <div class="e-card-header"><h2>Kapsels</h2></div>
+    <p class="e-hint">Voeg kapsels toe of pas ze aan. Wijzigingen zijn meteen zichtbaar voor klanten.</p>
+
+    <div id="kapsels-lijst">
+      {% for k in kapsels %}
+      <div class="kapsel-beheer-rij" id="kapsel-rij-{{ k.id }}">
+        <div class="kapsel-beheer-naam" id="kapsel-naam-{{ k.id }}">{{ k.naam }}</div>
+        <div class="kapsel-beheer-duur" id="kapsel-duur-{{ k.id }}">{{ k.duur }} min</div>
+        <button class="btn-klein btn-grijs" onclick="bewerkKapsel({{ k.id }}, '{{ k.naam|e }}', {{ k.duur }})">Bewerk</button>
+        <button class="btn-klein btn-rood" onclick="verwijderKapsel({{ k.id }})">Verwijder</button>
+      </div>
+      {% endfor %}
+      {% if not kapsels %}
+      <p style="color:var(--muted);font-size:0.85rem;padding:10px 0;" id="geen-kapsels-tekst">Nog geen kapsels toegevoegd.</p>
+      {% endif %}
+    </div>
+
+    <!-- Nieuw kapsel toevoegen -->
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="form-group" style="flex:1;min-width:160px;">
+          <label>Naam kapsel</label>
+          <input type="text" id="nieuw-kapsel-naam" placeholder="Naam van het kapsel">
+        </div>
+        <div class="form-group" style="max-width:110px;">
+          <label>Duur (min)</label>
+          <input type="number" id="nieuw-kapsel-duur" value="30" min="5" max="180">
+        </div>
+        <button class="btn" onclick="voegKapselToe()" style="margin-bottom:1px;">+ Toevoegen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tijdsloten ─────────────────────────────────────────────────────────── -->
+  <div class="e-card beheer-sectie">
+    <div class="e-card-header"><h2>Tijdsloten</h2></div>
+    <p class="e-hint">
+      Voeg je beschikbare tijdsloten toe. Klanten kunnen alleen uit deze tijden kiezen.<br>
+      Formaat: <strong>UU:MM</strong> (bv. 13:00 · 13:30 · 14:00 …)
+    </p>
+
+    <div id="slots-container">
+      {% for s in tijdsloten %}
+      <span class="slot-rij" id="slot-{{ s.id }}">
+        {{ s.tijdslot }}
+        <button class="slot-verwijder" onclick="verwijderSlot({{ s.id }}, this)">×</button>
+      </span>
+      {% endfor %}
+    </div>
+    {% if not tijdsloten %}
+    <p style="color:var(--muted);font-size:0.85rem;margin:10px 0;" id="geen-slots-tekst">
+      Nog geen tijdsloten toegevoegd.
+    </p>
+    {% endif %}
+
+    <div class="voeg-slot-form" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <input type="text" id="nieuw-slot" placeholder="bv. 13:00" maxlength="5" style="max-width:110px;">
+      <button class="btn" onclick="voegSlotToe()">+ Toevoegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bewerk kapsel modal -->
+<div id="bewerk-modal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <h3>Kapsel bewerken</h3>
+    <input type="hidden" id="bewerk-id">
+    <div class="form-group" style="margin:16px 0 12px;">
+      <label>Naam</label>
+      <input type="text" id="bewerk-naam">
+    </div>
+    <div class="form-group" style="margin-bottom:20px;">
+      <label>Duur (minuten)</label>
+      <input type="number" id="bewerk-duur" min="5" max="180">
+    </div>
+    <div class="modal-acties">
+      <button class="btn btn-ghost" onclick="document.getElementById('bewerk-modal').style.display='none'">Annuleer</button>
+      <button class="btn" onclick="slaBewerktOp()">Opslaan</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Kapsels ───────────────────────────────────────────────────────────────────
+async function voegKapselToe() {
+  const naam = document.getElementById('nieuw-kapsel-naam').value.trim();
+  const duur = document.getElementById('nieuw-kapsel-duur').value;
+  if (!naam) { alert('Voer een naam in.'); return; }
+  const res  = await fetch('/eigenaar/kapsels/add', {
+    method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `naam=${encodeURIComponent(naam)}&duur=${duur}`
+  });
+  const data = await res.json();
+  if (data.ok) {
+    document.getElementById('geen-kapsels-tekst')?.remove();
+    const lijst = document.getElementById('kapsels-lijst');
+    lijst.insertAdjacentHTML('beforeend', `
+      <div class="kapsel-beheer-rij" id="kapsel-rij-${data.id}">
+        <div class="kapsel-beheer-naam" id="kapsel-naam-${data.id}">${data.naam}</div>
+        <div class="kapsel-beheer-duur" id="kapsel-duur-${data.id}">${data.duur} min</div>
+        <button class="btn-klein btn-grijs" onclick="bewerkKapsel(${data.id},'${data.naam.replace(/'/g,"\\'")}',${data.duur})">Bewerk</button>
+        <button class="btn-klein btn-rood" onclick="verwijderKapsel(${data.id})">Verwijder</button>
+      </div>`);
+    document.getElementById('nieuw-kapsel-naam').value = '';
+    document.getElementById('nieuw-kapsel-duur').value = '30';
+  }
+}
+
+function bewerkKapsel(id, naam, duur) {
+  document.getElementById('bewerk-id').value   = id;
+  document.getElementById('bewerk-naam').value = naam;
+  document.getElementById('bewerk-duur').value = duur;
+  document.getElementById('bewerk-modal').style.display = 'flex';
+}
+
+async function slaBewerktOp() {
+  const id   = document.getElementById('bewerk-id').value;
+  const naam = document.getElementById('bewerk-naam').value.trim();
+  const duur = document.getElementById('bewerk-duur').value;
+  if (!naam) return;
+  await fetch(`/eigenaar/kapsels/${id}/bewerk`, {
+    method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `naam=${encodeURIComponent(naam)}&duur=${duur}`
+  });
+  document.getElementById('kapsel-naam-' + id).textContent = naam;
+  document.getElementById('kapsel-duur-' + id).textContent = duur + ' min';
+  document.getElementById('bewerk-modal').style.display = 'none';
+  const rij = document.getElementById('kapsel-rij-' + id);
+  rij.querySelector('.btn-grijs').setAttribute('onclick', `bewerkKapsel(${id},'${naam.replace(/'/g,"\\'")}',${duur})`);
+}
+
+async function verwijderKapsel(id) {
+  if (!confirm('Kapsel verwijderen?')) return;
+  const res = await fetch(`/eigenaar/kapsels/${id}/verwijder`, { method: 'POST' });
+  if ((await res.json()).ok) document.getElementById('kapsel-rij-' + id)?.remove();
+}
+
+// ── Tijdsloten ─────────────────────────────────────────────────────────────────
+async function voegSlotToe() {
+  const slot = document.getElementById('nieuw-slot').value.trim();
+  const res  = await fetch('/eigenaar/tijdsloten/add', {
+    method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `tijdslot=${encodeURIComponent(slot)}`
+  });
+  const data = await res.json();
+  if (data.ok) {
+    document.getElementById('geen-slots-tekst')?.remove();
+    location.reload();
+  } else {
+    alert(data.fout || 'Gebruik het formaat UU:MM (bv. 13:00).');
+  }
+}
+
+async function verwijderSlot(id, btn) {
+  const res = await fetch(`/eigenaar/tijdsloten/${id}/verwijder`, { method: 'POST' });
+  if ((await res.json()).ok) btn.closest('.slot-rij').remove();
+}
+
+// Sluit modal bij klik buiten
+document.getElementById('bewerk-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('bewerk-modal'))
+    document.getElementById('bewerk-modal').style.display = 'none';
+});
+</script>
+{% endblock %}

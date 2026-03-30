@@ -1,0 +1,126 @@
+{% extends 'eigenaar/base.html' %}
+{% set actief = 'instellingen' %}
+{% block title %}Instellingen — {{ kapper_naam }}{% endblock %}
+
+{% block content %}
+<div class="e-container">
+  <div class="e-page-header">
+    <h1>Instellingen</h1>
+  </div>
+
+  {% if bericht %}
+  <div class="alert alert-{{ bericht[0] }}">{{ bericht[1] }}</div>
+  {% endif %}
+
+  <!-- ── Naam ─────────────────────────────────────────────────────────────── -->
+  <div class="e-card instelling-sectie">
+    <div class="e-card-header"><h2>Algemeen</h2></div>
+    <form method="POST">
+      <input type="hidden" name="actie" value="algemeen">
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Naam van de kapper / zaak</label>
+        <input type="text" name="kapper_naam" value="{{ kapper_naam }}" required>
+        <span class="form-hint">Dit verschijnt op de website en in alle e-mails.</span>
+      </div>
+      <button type="submit" class="btn">Opslaan</button>
+    </form>
+  </div>
+
+  <!-- ── E-mail ─────────────────────────────────────────────────────────────── -->
+  <div class="e-card instelling-sectie">
+    <div class="e-card-header"><h2>E-mail herinneringen</h2></div>
+    <div class="e-hint" style="margin-bottom:16px;">
+      <p style="margin-bottom:8px;">Klanten ontvangen de dag voor hun afspraak automatisch een herinnering per e-mail.</p>
+      <strong>Hoe instellen?</strong>
+      <ol style="margin:8px 0 0 18px;line-height:2.1;">
+        <li>Open <a href="https://myaccount.google.com/security" target="_blank" style="color:var(--gold);">Google Account → Beveiliging ↗</a></li>
+        <li>Zet <strong>2-stapsverificatie</strong> aan (als nog niet aan)</li>
+        <li>Ga naar <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--gold);">App-wachtwoorden ↗</a></li>
+        <li>Kies "Andere" → typ <strong>Kapper</strong> → klik <strong>Maken</strong></li>
+        <li>Kopieer het 16-cijferige wachtwoord en plak het hieronder</li>
+      </ol>
+    </div>
+    <form method="POST" id="email-form">
+      <input type="hidden" name="actie" value="email">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>E-mailadres</label>
+          <input type="email" name="smtp_email" value="{{ smtp_email }}" placeholder="jouw@gmail.com">
+        </div>
+        <div class="form-group">
+          <label>App-wachtwoord</label>
+          <input type="password" name="smtp_wachtwoord" placeholder="••••••••••••">
+          <span class="form-hint">Laat leeg om het huidige te bewaren.</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button type="submit" class="btn">Opslaan</button>
+        <button type="button" class="btn btn-ghost" onclick="stuurTestEmail()">Stuur test-e-mail</button>
+      </div>
+    </form>
+    <div id="test-email-resultaat" style="margin-top:12px;font-size:0.85rem;display:none;"></div>
+  </div>
+
+  <!-- ── App installeren ────────────────────────────────────────────────────── -->
+  <div class="e-card instelling-sectie">
+    <div class="e-card-header"><h2>App op telefoon</h2></div>
+    <div id="pwa-install-wrap" style="display:none">
+      <p class="e-hint">Installeer het beheerpaneel als app — sneller toegang zonder browser.</p>
+      <button id="pwa-install-btn" class="btn">Installeer als app</button>
+    </div>
+    <div id="pwa-geinstalleerd" style="display:none">
+      <p style="color:var(--green);font-size:0.9rem;">✓ App is al geïnstalleerd op dit apparaat.</p>
+    </div>
+    <p id="pwa-instructie" class="e-hint">Open deze pagina in Chrome op je telefoon om de app te installeren.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function stuurTestEmail() {
+  const resultaat = document.getElementById('test-email-resultaat');
+  resultaat.style.display = 'block';
+  resultaat.style.color   = 'var(--muted)';
+  resultaat.textContent   = 'Bezig met verzenden…';
+  try {
+    const res  = await fetch('/eigenaar/test-email', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      resultaat.style.color   = 'var(--green)';
+      resultaat.textContent   = '✓ Test-e-mail verzonden! Controleer je inbox.';
+    } else {
+      resultaat.style.color   = 'var(--red)';
+      resultaat.textContent   = '✗ Fout: ' + (data.fout || 'Onbekende fout. Controleer je e-mailadres en App-wachtwoord.');
+    }
+  } catch (e) {
+    resultaat.style.color = 'var(--red)';
+    resultaat.textContent = '✗ Verbindingsfout. Probeer opnieuw.';
+  }
+}
+
+// ── PWA ────────────────────────────────────────────────────────────────────────
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  document.getElementById('pwa-install-wrap').style.display = 'block';
+  document.getElementById('pwa-instructie').style.display   = 'none';
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('pwa-install-wrap').style.display  = 'none';
+  document.getElementById('pwa-geinstalleerd').style.display = 'block';
+  document.getElementById('pwa-instructie').style.display    = 'none';
+});
+document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+  }
+});
+if (window.matchMedia('(display-mode: standalone)').matches) {
+  document.getElementById('pwa-geinstalleerd').style.display = 'block';
+  document.getElementById('pwa-instructie').style.display    = 'none';
+}
+</script>
+{% endblock %}

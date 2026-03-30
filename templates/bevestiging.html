@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Afspraak bevestigd — {{ kapper_naam }}{% endblock %}
+
+{% block content %}
+<div class="container bevestiging-wrap">
+  <div class="bevestiging-card">
+    <div class="check-icon">✓</div>
+    <h1>Afspraak bevestigd!</h1>
+    <p class="bevestiging-sub">Je afspraak is succesvol ingepland. Tot dan!</p>
+
+    <div class="afspraak-detail">
+      <div class="detail-rij">
+        <span class="detail-label">Kapsel</span>
+        <span class="detail-waarde">{{ kapsel_naam }}</span>
+      </div>
+      <div class="detail-rij">
+        <span class="detail-label">Duur</span>
+        <span class="detail-waarde">{{ afspraak.duur }} minuten</span>
+      </div>
+      <div class="detail-rij">
+        <span class="detail-label">Datum</span>
+        <span class="detail-waarde">{{ datum_nl }}</span>
+      </div>
+      <div class="detail-rij">
+        <span class="detail-label">Tijdslot</span>
+        <span class="detail-waarde">{{ afspraak.tijdslot }}</span>
+      </div>
+      <div class="detail-rij">
+        <span class="detail-label">Naam</span>
+        <span class="detail-waarde">{{ afspraak.naam }}</span>
+      </div>
+      {% if afspraak.email %}
+      <div class="detail-rij">
+        <span class="detail-label">E-mail</span>
+        <span class="detail-waarde">{{ afspraak.email }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if afspraak.email %}
+    <div class="herinnering-info">
+      Je ontvangt de dag voor je afspraak een herinnering op <strong>{{ afspraak.email }}</strong>.
+    </div>
+    {% endif %}
+
+    <div class="feedback-hint">
+      <p>Bedankt voor je afspraak! Je kan <a href="/feedback/{{ afspraak.feedback_token }}" style="color:var(--gold);font-weight:600;">hier</a> een beoordeling of fooi achterlaten na je bezoek.</p>
+    </div>
+
+    <a href="/" class="btn">Terug naar home</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  localStorage.setItem('feedback_token', '{{ afspraak.feedback_token }}');
+</script>
+{% endblock %}

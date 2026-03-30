@@ -1,0 +1,134 @@
+{% extends 'eigenaar/base.html' %}
+{% set actief = 'kalender' %}
+{% block title %}Kalender — {{ kapper_naam }}{% endblock %}
+
+{% block content %}
+<div class="e-container">
+  <div class="e-page-header">
+    <h1>Kalender</h1>
+    <p class="e-sub">Klik op een dag om hem te blokkeren (Geannuleerd).</p>
+  </div>
+
+  <div class="e-card">
+    <div class="kalender-nav">
+      <button type="button" class="kalender-pijl" id="vorige-maand">&#8249;</button>
+      <span id="kalender-titel" class="kalender-maand-titel"></span>
+      <button type="button" class="kalender-pijl" id="volgende-maand">&#8250;</button>
+    </div>
+    <div class="kalender-legenda">
+      <span class="legenda-item"><span class="legenda-kleur beschikbaar"></span>Beschikbaar</span>
+      <span class="legenda-item"><span class="legenda-kleur heeft-afspraken"></span>Heeft afspraken</span>
+      <span class="legenda-item"><span class="legenda-kleur geannuleerd"></span>Geannuleerd</span>
+    </div>
+    <div class="kalender-dagen-header">
+      <span>Ma</span><span>Di</span><span>Wo</span><span>Do</span><span>Vr</span><span>Za</span><span>Zo</span>
+    </div>
+    <div class="kalender-grid eigenaar-kalender" id="kalender-grid"></div>
+  </div>
+
+  <!-- Geannuleerde dagen lijst -->
+  <div class="e-card">
+    <div class="e-card-header"><h2>Geannuleerde dagen</h2></div>
+    {% if geblokkeerde_dagen %}
+    <div class="geblokkeerd-lijst">
+      {% for datum in geblokkeerde_dagen %}
+      <div class="geblokkeerd-rij">
+        <div>
+          <strong>{{ datum }}</strong>
+          {% if geblokkeerd_details[datum] %}<span class="reden-tekst">— {{ geblokkeerd_details[datum] }}</span>{% endif %}
+        </div>
+        <button class="btn-klein btn-grijs" onclick="deblokkeer('{{ datum }}')">Herstel</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="leeg-state">Geen geannuleerde dagen.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="blokkeer-modal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <h3>Dag annuleren</h3>
+    <p id="modal-datum-tekst" style="color:var(--gold);margin-bottom:16px;font-size:0.9rem;"></p>
+    <div class="form-group">
+      <label>Reden <span style="font-weight:400;text-transform:none;font-size:0.76rem;color:var(--muted);">(optioneel)</span></label>
+      <input type="text" id="modal-reden" placeholder="bv. Vakantie, Ziek…">
+    </div>
+    <div class="modal-acties">
+      <button class="btn btn-ghost" onclick="sluitModal()">Annuleer</button>
+      <button class="btn" style="background:var(--red);" onclick="bevestig()">Dag annuleren</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const GEBLOKKEERD = {{ geblokkeerde_dagen | tojson }};
+const COUNTS = {{ afspraak_counts | tojson }};
+const MAANDEN = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+let jaar = new Date().getFullYear(), maand = new Date().getMonth(), geselecteerd = null;
+
+function bouwKalender() {
+  document.getElementById('kalender-titel').textContent = `${MAANDEN[maand]} ${jaar}`;
+  const grid = document.getElementById('kalender-grid'); grid.innerHTML = '';
+  const vandaag = new Date(); vandaag.setHours(0,0,0,0);
+  const eerste = new Date(jaar, maand, 1);
+  const offset = (eerste.getDay() + 6) % 7;
+  const dagen  = new Date(jaar, maand + 1, 0).getDate();
+  for (let i = 0; i < offset; i++) { const l = document.createElement('div'); l.className='dag leeg'; grid.appendChild(l); }
+  for (let d = 1; d <= dagen; d++) {
+    const str = `${jaar}-${String(maand+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dagD = new Date(jaar, maand, d);
+    const cel  = document.createElement('div'); cel.className = 'dag eigenaar-dag';
+    const nr   = document.createElement('span'); nr.className = 'dag-nr'; nr.textContent = d; cel.appendChild(nr);
+    if (dagD < vandaag) { cel.classList.add('verleden'); }
+    else if (GEBLOKKEERD.includes(str)) {
+      cel.classList.add('geblokkeerd');
+      cel.title = 'Geannuleerd — klik om te herstellen';
+      cel.addEventListener('click', () => deblokkeer(str));
+    } else {
+      if (COUNTS[str]) {
+        cel.classList.add('heeft-afspraken');
+        const b = document.createElement('span'); b.className='dag-badge'; b.textContent=COUNTS[str]; cel.appendChild(b);
+      } else { cel.classList.add('beschikbaar'); }
+      cel.addEventListener('click', () => openModal(str, d));
+    }
+    grid.appendChild(cel);
+  }
+}
+
+function openModal(str, d) {
+  geselecteerd = str;
+  document.getElementById('modal-datum-tekst').textContent = `${d} ${MAANDEN[maand]} ${jaar}`;
+  document.getElementById('modal-reden').value = '';
+  document.getElementById('blokkeer-modal').style.display = 'flex';
+}
+function sluitModal() { document.getElementById('blokkeer-modal').style.display = 'none'; }
+
+async function bevestig() {
+  const reden = document.getElementById('modal-reden').value;
+  const res = await fetch('/eigenaar/kalender/blokkeer', {
+    method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `datum=${geselecteerd}&reden=${encodeURIComponent(reden)}`
+  });
+  if ((await res.json()).ok) { sluitModal(); location.reload(); }
+}
+
+async function deblokkeer(datum) {
+  if (!confirm(`Dag ${datum} herstellen?`)) return;
+  const res = await fetch('/eigenaar/kalender/deblokkeer', {
+    method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `datum=${datum}`
+  });
+  if ((await res.json()).ok) location.reload();
+}
+
+document.getElementById('vorige-maand').addEventListener('click', () => { maand--; if(maand<0){maand=11;jaar--;} bouwKalender(); });
+document.getElementById('volgende-maand').addEventListener('click', () => { maand++; if(maand>11){maand=0;jaar++;} bouwKalender(); });
+document.getElementById('blokkeer-modal').addEventListener('click', e => { if (e.target === document.getElementById('blokkeer-modal')) sluitModal(); });
+bouwKalender();
+</script>
+{% endblock %}

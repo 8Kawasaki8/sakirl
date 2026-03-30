@@ -1,0 +1,4 @@
+flask>=3.0
+apscheduler>=3.10
+werkzeug>=3.0
+gunicorn>=21.2

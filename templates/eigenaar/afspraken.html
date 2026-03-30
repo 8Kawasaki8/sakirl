@@ -1,0 +1,88 @@
+{% extends 'eigenaar/base.html' %}
+{% set actief = 'afspraken' %}
+{% block title %}Afspraken — {{ kapper_naam }}{% endblock %}
+
+{% block content %}
+<div class="e-container">
+  <div class="e-page-header">
+    <h1>Afspraken</h1>
+  </div>
+
+  <!-- Filter -->
+  <div class="e-card filter-card">
+    <form method="GET" class="filter-form">
+      <div class="form-group">
+        <label>Datum</label>
+        <input type="date" name="datum" value="{{ filter_datum }}">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status">
+          <option value="">Alle statussen</option>
+          <option value="gepland"     {% if filter_status=='gepland' %}selected{% endif %}>Gepland</option>
+          <option value="gedaan"      {% if filter_status=='gedaan' %}selected{% endif %}>Gedaan</option>
+          <option value="geannuleerd" {% if filter_status=='geannuleerd' %}selected{% endif %}>Geannuleerd</option>
+        </select>
+      </div>
+      <button type="submit" class="btn">Filter</button>
+      <a href="/eigenaar/afspraken" class="btn btn-ghost">Reset</a>
+    </form>
+  </div>
+
+  <!-- Lijst -->
+  <div class="e-card">
+    {% if afspraken %}
+    <div class="afspraak-lijst">
+      {% for a in afspraken %}
+      <div class="afspraak-rij status-{{ a.status }}">
+        <div class="afspraak-tijd">
+          <div>{{ a.tijdslot }}</div>
+          <div class="afspraak-datum-klein">{{ a.datum.split('-')[2]|int }} {{ ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][a.datum.split('-')[1]|int - 1] }}</div>
+        </div>
+        <div class="afspraak-info">
+          <div class="afspraak-naam">{{ a.naam }}</div>
+          <div class="afspraak-meta">{{ a.kapsel_naam }} · {{ a.kapsel_duur }} min</div>
+          {% if a.aangepast_kapsel_naam %}
+          <div class="afspraak-aangepast">Aangepast kapsel — bespreek duur</div>
+          {% endif %}
+          <div class="afspraak-meta">{{ a.telefoon }}</div>
+          {% if a.email %}<div class="afspraak-meta">{{ a.email }}</div>{% endif %}
+          {% if a.bericht %}<div class="afspraak-feedback-preview">"{{ a.bericht }}"</div>{% endif %}
+          {% if a.beoordeling %}
+          <div class="afspraak-meta" style="color:var(--gold);">
+            {% for i in range(a.beoordeling) %}★{% endfor %}{% for i in range(5-a.beoordeling) %}☆{% endfor %}
+            {% if a.fooi_bedrag and a.fooi_bedrag > 0 %} · €{{ "%.2f"|format(a.fooi_bedrag) }} fooi{% endif %}
+          </div>
+          {% endif %}
+        </div>
+        <div class="afspraak-acties">
+          <span class="status-badge status-{{ a.status }}">{{ a.status }}</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+            {% if a.status == 'gepland' %}
+            <button class="btn-klein btn-rood" onclick="updateStatus({{ a.id }}, 'geannuleerd')">Annuleer</button>
+            {% elif a.status == 'geannuleerd' %}
+            <button class="btn-klein btn-grijs" onclick="updateStatus({{ a.id }}, 'gepland')">↩ Herstel</button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="leeg-state">Geen afspraken gevonden.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function updateStatus(id, status) {
+  const res = await fetch(`/eigenaar/afspraken/${id}/status`, {
+    method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `status=${status}`
+  });
+  if ((await res.json()).ok) location.reload();
+}
+</script>
+{% endblock %}

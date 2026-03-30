@@ -1,0 +1,66 @@
+{% extends 'eigenaar/base.html' %}
+{% set actief = 'feedback' %}
+{% block title %}Beoordelingen — {{ kapper_naam }}{% endblock %}
+
+{% block content %}
+<div class="e-container">
+  <div class="e-page-header">
+    <h1>Beoordelingen</h1>
+  </div>
+
+  <!-- Overzicht stats -->
+  <div class="stats-grid">
+    <div class="stat-card gold">
+      <div class="stat-getal">{{ gemiddeld }}<span style="font-size:1rem"> / 5</span></div>
+      <div class="stat-label">Gemiddelde score</div>
+    </div>
+    <div class="stat-card gold">
+      <div class="stat-getal">€{{ "%.2f"|format(totaal_fooi) }}</div>
+      <div class="stat-label">Totale fooien</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-getal">{{ feedback_lijst|length }}</div>
+      <div class="stat-label">Beoordelingen</div>
+    </div>
+  </div>
+
+  <div class="e-card">
+    <div class="e-card-header"><h2>Alle beoordelingen</h2></div>
+
+    {% if feedback_lijst %}
+    <div class="feedback-lijst">
+      {% for f in feedback_lijst %}
+      <div class="feedback-rij">
+        <div class="feedback-header">
+          <div>
+            <strong class="feedback-naam">{{ f.naam }}</strong>
+            <span class="feedback-kapsel">
+              — {{ kapsel_types[f.kapsel_type].naam if f.kapsel_type in kapsel_types else f.kapsel_type }}
+            </span>
+          </div>
+          <div class="feedback-datum">{{ f.datum }} om {{ f.tijdslot }}</div>
+        </div>
+
+        {% if f.beoordeling %}
+        <div class="feedback-sterren">
+          {% for i in range(f.beoordeling) %}★{% endfor %}{% for i in range(5 - f.beoordeling) %}☆{% endfor %}
+          <span class="feedback-score">{{ f.beoordeling }}/5</span>
+        </div>
+        {% endif %}
+
+        {% if f.bericht %}
+        <div class="feedback-bericht">"{{ f.bericht }}"</div>
+        {% endif %}
+
+        {% if f.fooi_bedrag and f.fooi_bedrag > 0 %}
+        <div class="feedback-fooi">💰 Fooi: €{{ "%.2f"|format(f.fooi_bedrag) }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="leeg-state">Nog geen beoordelingen ontvangen.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

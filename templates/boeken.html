@@ -1,0 +1,317 @@
+{% extends 'base.html' %}
+{% block title %}Boek een afspraak — {{ kapper_naam }}{% endblock %}
+
+{% block content %}
+<div class="container boek-container">
+  <div class="boek-header">
+    <h1>Nieuwe afspraak</h1>
+    <p class="boek-sub">Volg de stappen hieronder om je afspraak te maken.</p>
+  </div>
+
+  <!-- Progress -->
+  <div class="stappen">
+    <div class="stap active" id="stap-ind-1"><span class="stap-nr">1</span><span class="stap-label">Kapsel</span></div>
+    <div class="stap-lijn"></div>
+    <div class="stap" id="stap-ind-2"><span class="stap-nr">2</span><span class="stap-label">Datum &amp; Tijd</span></div>
+    <div class="stap-lijn"></div>
+    <div class="stap" id="stap-ind-3"><span class="stap-nr">3</span><span class="stap-label">Gegevens</span></div>
+  </div>
+
+  <form method="POST" action="/boeken" id="boek-form">
+
+    <!-- ── Stap 1: Kapsel ────────────────────────────────────────────────── -->
+    <div class="stap-inhoud active" id="stap-1">
+      <p class="stap-titel">Kies je kapsel</p>
+      <div class="kapsel-grid" id="kapsel-grid">
+        {% for k in kapsels %}
+        <label class="kapsel-kaart">
+          <input type="radio" name="kapsel_id" value="{{ k.id }}" data-duur="{{ k.duur }}" required>
+          <div class="kapsel-kaart-inner">
+            <div class="kapsel-icon">✂</div>
+            <div class="kapsel-naam">{{ k.naam }}</div>
+            <div class="kapsel-duur">{{ k.duur }} min</div>
+          </div>
+        </label>
+        {% endfor %}
+
+        <!-- Aangepast kapsel -->
+        <div class="kapsel-aangepast" id="kapsel-aangepast-kaart" onclick="toggleAangepast()">
+          <div class="kapsel-plus">+</div>
+          <div class="kapsel-naam" style="font-size:0.82rem;color:var(--muted);">Ander kapsel</div>
+          <input type="text" class="kapsel-aangepast-input" id="aangepast-input"
+                 placeholder="Typ je kapsel…" onclick="event.stopPropagation()">
+        </div>
+      </div>
+      <!-- Hidden radio zodat kapsel_id altijd meegestuurd wordt bij aangepast kapsel -->
+      <input type="radio" name="kapsel_id" value="aangepast" id="radio-aangepast" style="display:none">
+      <input type="hidden" name="aangepast_naam" id="aangepast-naam-hidden">
+
+      <div class="stap-nav">
+        <button type="button" class="btn" onclick="naarStap(2)">Volgende →</button>
+      </div>
+    </div>
+
+    <!-- ── Stap 2: Datum & Tijdslot ─────────────────────────────────────── -->
+    <div class="stap-inhoud" id="stap-2">
+      <p class="stap-titel">Kies een datum en tijdslot</p>
+      <div class="kalender-wrap">
+        <div class="kalender-nav">
+          <button type="button" class="kalender-pijl" id="vorige-maand">&#8249;</button>
+          <span id="kalender-titel" class="kalender-maand-titel"></span>
+          <button type="button" class="kalender-pijl" id="volgende-maand">&#8250;</button>
+        </div>
+        <div class="kalender-dagen-header">
+          <span>Ma</span><span>Di</span><span>Wo</span><span>Do</span><span>Vr</span><span>Za</span><span>Zo</span>
+        </div>
+        <div class="kalender-grid" id="kalender-grid"></div>
+      </div>
+      <input type="hidden" name="datum" id="datum-input" required>
+      <input type="hidden" name="tijdslot" id="tijdslot-input" required>
+      <div id="datum-gekozen" class="gekozen-label" style="display:none;"></div>
+      <div class="stap-nav">
+        <button type="button" class="btn btn-ghost" onclick="naarStap(1)">← Terug</button>
+        <button type="button" class="btn" id="btn-stap-3" onclick="naarStap(3)" disabled>Volgende →</button>
+      </div>
+    </div>
+
+    <!-- ── Tijdslot popup ─────────────────────────────────────────────────── -->
+    <div id="slot-popup-overlay" onclick="sluitPopup(event)" style="display:none;">
+      <div class="slot-popup-card" onclick="event.stopPropagation()">
+        <div class="slot-popup-header">
+          <span id="slot-popup-datum" style="font-weight:700;font-size:1rem;"></span>
+          <button type="button" onclick="sluitPopup()" class="slot-popup-sluit">✕</button>
+        </div>
+        <div id="slot-popup-grid" class="slot-grid"></div>
+        <div id="slot-popup-geen" style="display:none;color:var(--muted);font-size:0.9rem;text-align:center;padding:12px 0;">
+          Geen beschikbare tijden op deze dag.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Stap 3: Gegevens ──────────────────────────────────────────────── -->
+    <div class="stap-inhoud" id="stap-3">
+      <p class="stap-titel">Jouw gegevens</p>
+      <div class="boek-samenvatting" id="samenvatting"></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="naam">Naam <span class="vereist">*</span></label>
+          <input type="text" id="naam" name="naam" placeholder="Jouw volledige naam" required>
+        </div>
+        <div class="form-group">
+          <label for="telefoon">Telefoonnummer <span class="vereist">*</span></label>
+          <input type="tel" id="telefoon" name="telefoon" placeholder="bv. 0470 12 34 56" required>
+        </div>
+        <div class="form-group full-width">
+          <label for="email">E-mailadres <span class="optioneel">(optioneel — voor herinnering)</span></label>
+          <input type="email" id="email" name="email" placeholder="jouw@email.com">
+          <small class="form-hint">Je ontvangt de dag voor je afspraak een herinnering per mail.</small>
+        </div>
+      </div>
+      <div class="stap-nav">
+        <button type="button" class="btn btn-ghost" onclick="naarStap(2)">← Terug</button>
+        <button type="submit" class="btn btn-success">Afspraak bevestigen ✓</button>
+      </div>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const MAANDEN = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+let gekozenKapselId   = null;
+let gekozenKapselDuur = 30;
+let gekozenKapselNaam = '';
+let gekozenDatum      = null;
+let gekozenSlot       = null;
+let gekozenAangepast  = false;
+let huidigJaar  = new Date().getFullYear();
+let huidigMaand = new Date().getMonth();
+let geblokkeerdeD = [];
+let bezetteDagen  = [];
+
+// ── Stap navigatie ────────────────────────────────────────────────────────────
+function naarStap(nr) {
+  const huidigNr = parseInt(document.querySelector('.stap-inhoud.active').id.split('-')[1]);
+  if (nr > huidigNr && !valideer(huidigNr)) return;
+  document.querySelectorAll('.stap-inhoud').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.stap').forEach(e => e.classList.remove('active','afgerond'));
+  document.getElementById('stap-' + nr).classList.add('active');
+  for (let i = 1; i < nr; i++) document.getElementById('stap-ind-' + i).classList.add('afgerond');
+  document.getElementById('stap-ind-' + nr).classList.add('active');
+  if (nr === 3) toonSamenvatting();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function valideer(nr) {
+  if (nr === 1) {
+    if (gekozenAangepast) {
+      const naam = document.getElementById('aangepast-input').value.trim();
+      if (!naam) { alert('Typ de naam van je kapsel in.'); return false; }
+      gekozenKapselId   = 'aangepast';
+      gekozenKapselNaam = naam;
+      gekozenKapselDuur = 30;
+      document.getElementById('aangepast-naam-hidden').value = naam;
+    } else if (!gekozenKapselId) {
+      alert('Kies een kapsel.'); return false;
+    }
+  }
+  if (nr === 2 && (!gekozenDatum || !gekozenSlot)) {
+    alert('Kies een datum en tijdslot.'); return false;
+  }
+  return true;
+}
+
+// ── Kapsel selectie ───────────────────────────────────────────────────────────
+document.querySelectorAll('input[name="kapsel_id"]').forEach(r => {
+  r.addEventListener('change', () => {
+    gekozenKapselId   = r.value;
+    gekozenKapselDuur = parseInt(r.dataset.duur);
+    gekozenKapselNaam = r.closest('.kapsel-kaart').querySelector('.kapsel-naam').textContent;
+    gekozenAangepast  = false;
+    document.getElementById('kapsel-aangepast-kaart').classList.remove('actief');
+    gekozenSlot = null;
+    document.getElementById('tijdslot-input').value = '';
+    document.getElementById('btn-stap-4').disabled = true;
+  });
+});
+
+function toggleAangepast() {
+  const kaart = document.getElementById('kapsel-aangepast-kaart');
+  const input = document.getElementById('aangepast-input');
+  const radio = document.getElementById('radio-aangepast');
+  const isActief = kaart.classList.contains('actief');
+  if (isActief) {
+    kaart.classList.remove('actief');
+    input.style.display = 'none';
+    radio.checked = false;
+    gekozenAangepast = false;
+    gekozenKapselId  = null;
+  } else {
+    // Deselect andere radio kapsels, activeer hidden radio
+    document.querySelectorAll('input[name="kapsel_id"]').forEach(r => r.checked = false);
+    radio.checked = true;
+    kaart.classList.add('actief');
+    input.style.display = 'block';
+    input.focus();
+    gekozenAangepast  = true;
+    gekozenKapselId   = 'aangepast';
+    gekozenKapselDuur = 30;
+  }
+}
+
+// ── Kalender ──────────────────────────────────────────────────────────────────
+async function laadGeblokkeerd() {
+  const res = await fetch('/api/geblokkeerde-dagen');
+  geblokkeerdeD = (await res.json()).geblokkeerd || [];
+  await laadBezetteDagen();
+}
+
+async function laadBezetteDagen() {
+  const maand = `${huidigJaar}-${String(huidigMaand+1).padStart(2,'0')}`;
+  const res = await fetch(`/api/bezette-dagen?maand=${maand}`);
+  bezetteDagen = (await res.json()).bezet || [];
+  bouwKalender();
+}
+
+function bouwKalender() {
+  document.getElementById('kalender-titel').textContent = `${MAANDEN[huidigMaand]} ${huidigJaar}`;
+  const grid   = document.getElementById('kalender-grid');
+  grid.innerHTML = '';
+  const vandaag = new Date(); vandaag.setHours(0,0,0,0);
+  const eerste  = new Date(huidigJaar, huidigMaand, 1);
+  const offset  = (eerste.getDay() + 6) % 7;
+  const dagen   = new Date(huidigJaar, huidigMaand + 1, 0).getDate();
+  for (let i = 0; i < offset; i++) { const l = document.createElement('div'); l.className='dag leeg'; grid.appendChild(l); }
+  for (let d = 1; d <= dagen; d++) {
+    const str = `${huidigJaar}-${String(huidigMaand+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dagD = new Date(huidigJaar, huidigMaand, d);
+    const cel  = document.createElement('div');
+    cel.textContent = d; cel.className = 'dag';
+    if (dagD < vandaag) { cel.classList.add('verleden'); }
+    else if (geblokkeerdeD.includes(str)) { cel.classList.add('geblokkeerd'); }
+    else {
+      cel.classList.add('beschikbaar');
+      if (gekozenDatum === str && gekozenSlot) cel.classList.add('gekozen');
+      if (bezetteDagen.includes(str)) cel.classList.add('heeft-boekingen');
+      cel.addEventListener('click', () => kiesDatum(str));
+    }
+    grid.appendChild(cel);
+  }
+}
+
+function kiesDatum(str) {
+  toonSlotPopup(str);
+}
+
+document.getElementById('vorige-maand').addEventListener('click', () => { huidigMaand--; if(huidigMaand<0){huidigMaand=11;huidigJaar--;} laadBezetteDagen(); });
+document.getElementById('volgende-maand').addEventListener('click', () => { huidigMaand++; if(huidigMaand>11){huidigMaand=0;huidigJaar++;} laadBezetteDagen(); });
+
+// ── Tijdslot popup ────────────────────────────────────────────────────────────
+async function toonSlotPopup(datum) {
+  const overlay = document.getElementById('slot-popup-overlay');
+  const grid    = document.getElementById('slot-popup-grid');
+  const geen    = document.getElementById('slot-popup-geen');
+  const titel   = document.getElementById('slot-popup-datum');
+  const [jaar, mnd, dag] = datum.split('-');
+  titel.textContent = `${parseInt(dag)} ${MAANDEN[parseInt(mnd)-1]}`;
+  grid.innerHTML = '<div style="color:var(--muted);padding:12px 0;text-align:center;">Laden…</div>';
+  geen.style.display = 'none';
+  overlay.style.display = 'flex';
+  const res  = await fetch(`/api/alle-slots?datum=${datum}&duur=${gekozenKapselDuur}`);
+  const data = await res.json();
+  grid.innerHTML = '';
+  if (!data.slots || !data.slots.length) { geen.style.display = 'block'; return; }
+  data.slots.forEach(s => {
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.textContent = s.tijdslot;
+    if (s.bezet) {
+      btn.classList.add('slot-btn', 'slot-bezet');
+      btn.disabled = true;
+    } else {
+      btn.classList.add('slot-btn');
+      if (gekozenSlot === s.tijdslot && gekozenDatum === datum) btn.classList.add('gekozen');
+      btn.addEventListener('click', () => kiesSlotEnSluit(s.tijdslot, datum));
+    }
+    grid.appendChild(btn);
+  });
+  if (data.slots.every(s => s.bezet)) geen.style.display = 'block';
+}
+
+function kiesSlotEnSluit(slot, datum) {
+  gekozenSlot  = slot;
+  gekozenDatum = datum;
+  document.getElementById('datum-input').value    = datum;
+  document.getElementById('tijdslot-input').value = slot;
+  document.getElementById('btn-stap-3').disabled  = false;
+  const [jaar, mnd, dag] = datum.split('-');
+  const el = document.getElementById('datum-gekozen');
+  el.style.display = 'block';
+  el.textContent   = `${parseInt(dag)} ${MAANDEN[parseInt(mnd)-1]} · ${slot}`;
+  bouwKalender();
+  sluitPopup();
+}
+
+function sluitPopup(event) {
+  if (!event || event.target === document.getElementById('slot-popup-overlay')) {
+    document.getElementById('slot-popup-overlay').style.display = 'none';
+  }
+}
+
+// ── Samenvatting ──────────────────────────────────────────────────────────────
+function toonSamenvatting() {
+  const [jaar, maand, dag] = gekozenDatum.split('-');
+  const datumNl = `${parseInt(dag)} ${MAANDEN[parseInt(maand)-1]} ${jaar}`;
+  document.getElementById('samenvatting').innerHTML = `
+    <div class="samenvatting-rij"><span>Kapsel</span><strong>${gekozenKapselNaam}</strong></div>
+    <div class="samenvatting-rij"><span>Duur</span><strong>${gekozenKapselDuur} minuten</strong></div>
+    <div class="samenvatting-rij"><span>Datum</span><strong>${datumNl}</strong></div>
+    <div class="samenvatting-rij"><span>Tijdslot</span><strong>${gekozenSlot}</strong></div>
+  `;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+laadGeblokkeerd();
+</script>
+{% endblock %}

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Beheer — {{ kapper_naam }}{% endblock %}</title>
+  <link rel="manifest" href="/eigenaar/manifest.json">
+  <meta name="theme-color" content="#141414">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='eigenaar.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="eigenaar-body">
+
+<nav class="eigenaar-nav">
+  <a href="/eigenaar/dashboard" class="nav-logo">
+    <span class="nav-logo-icon">✂</span>
+    <span>{{ kapper_naam }}</span>
+  </a>
+  <div class="nav-links" id="nav-links">
+    <a href="/eigenaar/dashboard"    class="nav-link {% if actief=='dashboard' %}actief{% endif %}">Dashboard</a>
+    <a href="/eigenaar/afspraken"    class="nav-link {% if actief=='afspraken' %}actief{% endif %}">Afspraken</a>
+    <a href="/eigenaar/kalender"     class="nav-link {% if actief=='kalender' %}actief{% endif %}">Kalender</a>
+    <a href="/eigenaar/feedback"     class="nav-link {% if actief=='feedback' %}actief{% endif %}">Beoordelingen</a>
+    <a href="/eigenaar/beheer"       class="nav-link {% if actief=='beheer' %}actief{% endif %}">Beheer</a>
+    <a href="/eigenaar/instellingen" class="nav-link {% if actief=='instellingen' %}actief{% endif %}">Instellingen</a>
+    <a href="/eigenaar/uitloggen"    class="nav-link nav-uitloggen">Uitloggen</a>
+  </div>
+  <button class="nav-hamburger" id="nav-toggle">☰</button>
+</nav>
+
+<div class="eigenaar-main">
+  {% block content %}{% endblock %}
+</div>
+
+<nav class="bottom-nav">
+  <a href="/eigenaar/dashboard"    class="bottom-nav-item {% if actief=='dashboard' %}actief{% endif %}"><span class="bottom-icon">🏠</span><span>Thuis</span></a>
+  <a href="/eigenaar/afspraken"    class="bottom-nav-item {% if actief=='afspraken' %}actief{% endif %}"><span class="bottom-icon">📋</span><span>Afspraken</span></a>
+  <a href="/eigenaar/kalender"     class="bottom-nav-item {% if actief=='kalender' %}actief{% endif %}"><span class="bottom-icon">📅</span><span>Kalender</span></a>
+  <a href="/eigenaar/beheer"       class="bottom-nav-item {% if actief=='beheer' %}actief{% endif %}"><span class="bottom-icon">✂</span><span>Beheer</span></a>
+  <a href="/eigenaar/instellingen" class="bottom-nav-item {% if actief=='instellingen' %}actief{% endif %}"><span class="bottom-icon">⚙</span><span>Instellingen</span></a>
+</nav>
+
+<script>
+document.getElementById('nav-toggle')?.addEventListener('click', () => {
+  document.getElementById('nav-links').classList.toggle('open');
+});
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js');
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Beoordeling — {{ kapper_naam }}{% endblock %}
+
+{% block content %}
+<div class="container bevestiging-wrap">
+  <div class="bevestiging-card">
+
+    {% if al_gegeven %}
+    <div class="check-icon">✓</div>
+    <h1>Beoordeling al gegeven</h1>
+    <p class="bevestiging-sub">Je hebt al een beoordeling achtergelaten. Bedankt!</p>
+    <a href="/" class="btn">Terug naar home</a>
+
+    {% else %}
+    <div class="feedback-icon">✂</div>
+    <h1>Hoe was je kapsel?</h1>
+    <p class="bevestiging-sub">
+      Hoi <strong>{{ afspraak.naam }}</strong>! Was je tevreden met je <strong>{{ kapsel_naam }}</strong>?
+      Laat het ons weten!
+    </p>
+
+    <form method="POST" id="feedback-form">
+
+      <!-- Sterrenbeoordeling -->
+      <div class="ster-wrap">
+        <label class="field-label">Jouw beoordeling</label>
+        <div class="sterren" id="sterren">
+          {% for i in range(1, 6) %}
+          <button type="button" class="ster" data-waarde="{{ i }}">★</button>
+          {% endfor %}
+        </div>
+        <input type="hidden" name="beoordeling" id="beoordeling-input" value="0">
+        <div id="ster-tekst" class="ster-tekst"></div>
+      </div>
+
+      <!-- Bericht -->
+      <div class="form-group">
+        <label for="bericht" class="field-label">Opmerking <span class="optioneel">(optioneel)</span></label>
+        <textarea id="bericht" name="bericht" rows="3" placeholder="Vertel ons wat je vond van de service…"></textarea>
+      </div>
+
+      <!-- Fooi -->
+      <div class="fooi-wrap">
+        <label class="field-label">Wil je een fooi geven? <span class="optioneel">(optioneel, betaal je ter plaatse)</span></label>
+        <div class="fooi-knoppen">
+          <button type="button" class="fooi-btn" data-bedrag="0">Geen</button>
+          <button type="button" class="fooi-btn" data-bedrag="2">€2</button>
+          <button type="button" class="fooi-btn" data-bedrag="5">€5</button>
+          <button type="button" class="fooi-btn" data-bedrag="10">€10</button>
+          <button type="button" class="fooi-btn" data-bedrag="15">€15</button>
+          <button type="button" class="fooi-btn aangepast" id="fooi-aangepast-btn">Aangepast</button>
+        </div>
+        <div id="fooi-aangepast-wrap" style="display:none;margin-top:10px;">
+          <input type="number" id="fooi-aangepast" min="0" max="100" step="0.5" placeholder="Voer bedrag in (€)">
+        </div>
+        <input type="hidden" name="fooi" id="fooi-input" value="0">
+        <div id="fooi-tekst" class="fooi-tekst"></div>
+      </div>
+
+      <button type="submit" class="btn btn-success btn-lg" style="width:100%;margin-top:8px;">
+        Verstuur beoordeling
+      </button>
+    </form>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const STER_LABELS = ['', 'Slecht', 'Kan beter', 'Goed', 'Heel goed', 'Uitstekend!'];
+
+// ── Sterren ──────────────────────────────────────────────────────────────────
+let gekozenSter = 0;
+document.querySelectorAll('.ster').forEach(btn => {
+  btn.addEventListener('mouseenter', () => kleurSterren(btn.dataset.waarde));
+  btn.addEventListener('mouseleave', () => kleurSterren(gekozenSter));
+  btn.addEventListener('click', () => {
+    gekozenSter = parseInt(btn.dataset.waarde);
+    document.getElementById('beoordeling-input').value = gekozenSter;
+    document.getElementById('ster-tekst').textContent = STER_LABELS[gekozenSter];
+    kleurSterren(gekozenSter);
+  });
+});
+
+function kleurSterren(n) {
+  document.querySelectorAll('.ster').forEach((s, i) => {
+    s.classList.toggle('actief', i < n);
+  });
+}
+
+// ── Fooi ─────────────────────────────────────────────────────────────────────
+let gekozenFooi = 0;
+document.querySelectorAll('.fooi-btn:not(.aangepast)').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.fooi-btn').forEach(b => b.classList.remove('actief'));
+    btn.classList.add('actief');
+    gekozenFooi = parseFloat(btn.dataset.bedrag);
+    document.getElementById('fooi-input').value = gekozenFooi;
+    document.getElementById('fooi-aangepast-wrap').style.display = 'none';
+    document.getElementById('fooi-tekst').textContent =
+      gekozenFooi > 0 ? `Je geeft €${gekozenFooi.toFixed(2)} fooi — bedankt!` : '';
+  });
+});
+
+document.getElementById('fooi-aangepast-btn')?.addEventListener('click', () => {
+  document.querySelectorAll('.fooi-btn').forEach(b => b.classList.remove('actief'));
+  document.getElementById('fooi-aangepast-btn').classList.add('actief');
+  document.getElementById('fooi-aangepast-wrap').style.display = 'block';
+});
+
+document.getElementById('fooi-aangepast')?.addEventListener('input', e => {
+  const val = parseFloat(e.target.value) || 0;
+  document.getElementById('fooi-input').value = val;
+  document.getElementById('fooi-tekst').textContent =
+    val > 0 ? `Je geeft €${val.toFixed(2)} fooi — bedankt!` : '';
+});
+
+// Set "Geen" as default active
+document.querySelector('.fooi-btn[data-bedrag="0"]')?.classList.add('actief');
+</script>
+{% endblock %}

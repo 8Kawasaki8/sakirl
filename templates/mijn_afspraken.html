@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Mijn afspraken — {{ kapper_naam }}{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:600px;">
+
+  <div class="mijn-afspraken-card">
+    <h1 style="font-size:1.6rem;font-weight:800;margin-bottom:6px;">Mijn afspraken</h1>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:0.92rem;">
+      Voer je telefoonnummer in om je afspraken te bekijken.
+    </p>
+
+    <form method="POST" style="display:flex;gap:10px;margin-bottom:28px;flex-wrap:wrap;">
+      <input type="tel" name="telefoon" value="{{ telefoon }}"
+             placeholder="bv. 0470 12 34 56" required
+             style="flex:1;min-width:200px;">
+      <button type="submit" class="btn">Zoeken</button>
+    </form>
+
+    {% if afspraken is not none %}
+      {% if afspraken %}
+
+        <!-- Aankomende afspraken -->
+        {% set toekomst = afspraken | selectattr('verleden', 'equalto', false) | list %}
+        {% if toekomst %}
+        <div style="margin-bottom:24px;">
+          <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px;">Aankomend</div>
+          {% for item in toekomst %}
+          {% set a = item.r %}
+          <div class="af-rij">
+            <div class="af-datum-col">
+              <div class="af-dag-nr">{{ a.datum.split('-')[2]|int }}</div>
+              <div class="af-maand">{{ ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][a.datum.split('-')[1]|int - 1] }}</div>
+            </div>
+            <div class="af-info">
+              <div class="af-naam">{{ a.kapsel_naam }}</div>
+              <div class="af-meta">{{ a.tijdslot }} &nbsp;·&nbsp; {{ a.kapsel_duur }} min</div>
+              <div class="af-meta">{{ item.datum_nl }}</div>
+              {% if a.aangepast_kapsel_naam %}
+              <div class="af-meta" style="color:var(--gold);">Aangepast kapsel</div>
+              {% endif %}
+            </div>
+            <div class="af-status">
+              <span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;
+                           padding:3px 10px;border-radius:100px;
+                           background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border);">
+                {{ a.status }}
+              </span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Voorbije afspraken -->
+        {% set verleden = afspraken | selectattr('verleden', 'equalto', true) | list %}
+        {% if verleden %}
+        <div>
+          <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px;">Geschiedenis</div>
+          {% for item in verleden %}
+          {% set a = item.r %}
+          <div class="af-rij" style="opacity:0.7;">
+            <div class="af-datum-col">
+              <div class="af-dag-nr" style="font-size:1.4rem;">{{ a.datum.split('-')[2]|int }}</div>
+              <div class="af-maand">{{ ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][a.datum.split('-')[1]|int - 1] }}</div>
+            </div>
+            <div class="af-info">
+              <div class="af-naam">{{ a.kapsel_naam }}</div>
+              <div class="af-meta">{{ a.tijdslot }} &nbsp;·&nbsp; {{ item.datum_nl }}</div>
+              {% if item.feedback %}
+              <div class="af-meta" style="color:var(--gold);">
+                {% for i in range(item.feedback.beoordeling or 0) %}★{% endfor %}
+                {% for i in range(5 - (item.feedback.beoordeling or 0)) %}☆{% endfor %}
+                {% if item.feedback.fooi_bedrag and item.feedback.fooi_bedrag > 0 %} · €{{ "%.2f"|format(item.feedback.fooi_bedrag) }} fooi{% endif %}
+              </div>
+              {% elif a.status == 'gedaan' %}
+              <a href="/feedback/{{ a.feedback_token }}" style="font-size:0.8rem;">Geef beoordeling →</a>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+      {% else %}
+      <div style="text-align:center;color:var(--muted);padding:32px 0;font-size:0.92rem;">
+        Geen afspraken gevonden voor dit telefoonnummer.
+      </div>
+      {% endif %}
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
