@@ -282,7 +282,7 @@ label {
 .eigenaar-body textarea {
   background: var(--surface2); border: 1.5px solid var(--border);
   border-radius: 10px; padding: 11px 14px;
-  color: var(--text); font-size: 0.9rem; font-family: inherit; width: 100%;
+  color: var(--text); font-size: 16px; font-family: inherit; width: 100%;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .eigenaar-body input:focus,
