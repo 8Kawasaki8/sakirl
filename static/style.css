@@ -352,7 +352,7 @@ textarea { resize: vertical; min-height: 80px; }
   display: none; width: 100%; margin-top: 8px;
   background: var(--surface2); border: 1px solid var(--border2);
   border-radius: 8px; padding: 9px 12px;
-  font-size: 0.85rem; font-family: inherit; text-align: center; color: var(--text);
+  font-size: 16px; font-family: inherit; text-align: center; color: var(--text);
 }
 .kapsel-aangepast-input::placeholder { color: var(--light); }
 .kapsel-aangepast-input:focus { outline: none; border-color: var(--gold); }
