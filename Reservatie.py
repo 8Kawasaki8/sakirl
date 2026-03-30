@@ -15,7 +15,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE = os.path.join(BASE_DIR, 'barber.db')
+DATA_DIR = os.environ.get('DATA_DIR', BASE_DIR)
+DATABASE = os.path.join(DATA_DIR, 'barber.db')
 
 # ── DB ─────────────────────────────────────────────────────────────────────────
 def get_db():
