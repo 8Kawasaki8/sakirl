@@ -262,6 +262,10 @@ def datum_nl_format(datum_str):
            'augustus','september','oktober','november','december']
     return f"{dag[d.weekday()]} {d.day} {mnd[d.month-1]} {d.year}"
 
+# Database initialiseren bij opstarten (ook met gunicorn)
+with app.app_context():
+    init_db()
+
 # ── Client routes ───────────────────────────────────────────────────────────────
 @app.route('/')
 def index():
