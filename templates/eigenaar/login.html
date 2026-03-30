@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Eigenaar Login — {{ kapper_naam }}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
   <link rel="manifest" href="/eigenaar/manifest.json">
   <meta name="theme-color" content="#c9a84c">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,7 +18,9 @@
 
 <div class="login-wrap">
   <div class="login-card">
-    <div class="login-logo">✂</div>
+    <div class="login-logo">
+      <img src="{{ url_for('static', filename='favicon.svg') }}" width="64" height="64" alt="logo">
+    </div>
     <h1 class="login-titel">{{ kapper_naam }}</h1>
     <p class="login-sub">Eigenaar toegang</p>
 
@@ -33,28 +37,42 @@
     </form>
 
     <div id="pwa-install-wrap" style="display:none;margin-top:20px;text-align:center;">
-      <button id="pwa-install-btn" class="btn btn-ghost btn-full">
-        📲 Installeer als app
+      <button id="pwa-install-btn" class="btn btn-ghost btn-full" style="display:none;">
+        Installeer als app
       </button>
+      <p id="ios-install-hint" style="display:none;font-size:0.85rem;color:var(--muted);line-height:1.6;">
+        Tik op <strong>Delen</strong> → <strong>Zet op beginscherm</strong> om de app te installeren.
+      </p>
     </div>
   </div>
 </div>
 
 <script>
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  document.getElementById('pwa-install-wrap').style.display = 'block';
-});
-document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    document.getElementById('pwa-install-wrap').style.display = 'none';
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+if (isMobile) {
+  if (isIOS) {
+    document.getElementById('pwa-install-wrap').style.display = 'block';
+    document.getElementById('ios-install-hint').style.display = 'block';
+  } else {
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('pwa-install-wrap').style.display = 'block';
+      document.getElementById('pwa-install-btn').style.display = 'block';
+    });
+    document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        document.getElementById('pwa-install-wrap').style.display = 'none';
+      }
+    });
   }
-});
+}
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/static/sw.js');
 }
