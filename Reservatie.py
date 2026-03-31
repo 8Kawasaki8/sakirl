@@ -853,6 +853,16 @@ def eigenaar_manifest():
         ]
     }), mimetype='application/json')
 
+@app.route('/reset-testdata-saki2026')
+def reset_testdata():
+    db = get_db()
+    db.execute("DELETE FROM afspraken")
+    db.execute("DELETE FROM feedback")
+    db.execute("DELETE FROM geblokkeerde_dagen")
+    db.commit()
+    db.close()
+    return "Klaar — alle testdata verwijderd."
+
 # ── Scheduler & Run ─────────────────────────────────────────────────────────────
 scheduler = BackgroundScheduler()
 scheduler.add_job(dagelijkse_herinneringen, 'cron', hour=9, minute=0)
