@@ -56,6 +56,11 @@
       {% for s in tijdsloten %}
       <span class="slot-rij" id="slot-{{ s.id }}">
         {{ s.tijdslot }}
+        {% if s.dagen %}
+        <span style="font-size:0.7rem;color:var(--muted);margin-left:4px;">
+          ({{ {'0':'Ma','1':'Di','2':'Wo','3':'Do','4':'Vr','5':'Za','6':'Zo'}[s.dagen.split(',')[0]] if s.dagen else '' }}{% if ',' in s.dagen %}…{% endif %})
+        </span>
+        {% endif %}
         <button class="slot-verwijder" onclick="verwijderSlot({{ s.id }}, this)">×</button>
       </span>
       {% endfor %}
@@ -67,8 +72,20 @@
     {% endif %}
 
     <div class="voeg-slot-form" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-      <input type="text" id="nieuw-slot" placeholder="bv. 13:00" maxlength="5" style="max-width:110px;">
-      <button class="btn" onclick="voegSlotToe()">+ Toevoegen</button>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+        <input type="text" id="nieuw-slot" placeholder="bv. 13:00" maxlength="5" style="max-width:110px;">
+        <div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;font-weight:600;">Beschikbaar op:</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;" id="dag-checkboxes">
+            {% for nr, naam in [('0','Ma'),('1','Di'),('2','Wo'),('3','Do'),('4','Vr'),('5','Za'),('6','Zo')] %}
+            <label style="font-size:0.8rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
+              <input type="checkbox" value="{{ nr }}" class="dag-check"> {{ naam }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <button class="btn" onclick="voegSlotToe()">+ Toevoegen</button>
+      </div>
     </div>
   </div>
 </div>
@@ -152,10 +169,11 @@ async function verwijderKapsel(id) {
 
 // ── Tijdsloten ─────────────────────────────────────────────────────────────────
 async function voegSlotToe() {
-  const slot = document.getElementById('nieuw-slot').value.trim();
-  const res  = await fetch('/eigenaar/tijdsloten/add', {
+  const slot  = document.getElementById('nieuw-slot').value.trim();
+  const dagen = [...document.querySelectorAll('.dag-check:checked')].map(c => c.value).join(',');
+  const res   = await fetch('/eigenaar/tijdsloten/add', {
     method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: `tijdslot=${encodeURIComponent(slot)}`
+    body: `tijdslot=${encodeURIComponent(slot)}&dagen=${encodeURIComponent(dagen)}`
   });
   const data = await res.json();
   if (data.ok) {

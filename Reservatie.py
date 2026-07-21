@@ -79,6 +79,12 @@ def init_db():
             waarde  TEXT
         );
     """)
+    # Migratie: dagen kolom toevoegen als die nog niet bestaat
+    try:
+        db.execute("ALTER TABLE tijdsloten ADD COLUMN dagen TEXT DEFAULT ''")
+        db.commit()
+    except:
+        pass
 
     # Default settings
     defaults = [
@@ -132,6 +138,7 @@ def get_tijdsloten():
     return [r['tijdslot'] for r in rows]
 
 def beschikbare_slots(datum_str, duur):
+    dag_nr = str(datetime.strptime(datum_str, '%Y-%m-%d').weekday())
     db = get_db()
     if db.execute("SELECT id FROM geblokkeerde_dagen WHERE datum=?", (datum_str,)).fetchone():
         db.close()
@@ -140,12 +147,15 @@ def beschikbare_slots(datum_str, duur):
         "SELECT tijdslot, kapsel_duur FROM afspraken WHERE datum=? AND status!='geannuleerd'",
         (datum_str,)
     ).fetchall()
-    slots_db = db.execute("SELECT tijdslot FROM tijdsloten WHERE actief=1 ORDER BY tijdslot").fetchall()
+    slots_db = db.execute("SELECT tijdslot, dagen FROM tijdsloten WHERE actief=1 ORDER BY tijdslot").fetchall()
     db.close()
 
-    alle_slots = [r['tijdslot'] for r in slots_db]
     vrij = []
-    for slot in alle_slots:
+    for row in slots_db:
+        dagen_str = row['dagen'] or ''
+        if dagen_str and dag_nr not in dagen_str.split(','):
+            continue
+        slot = row['tijdslot']
         start = slot_min(slot)
         einde = start + duur
         conflict = any(
@@ -363,10 +373,14 @@ def api_alle_slots():
         "SELECT tijdslot, kapsel_duur FROM afspraken WHERE datum=? AND status!='geannuleerd'",
         (datum,)
     ).fetchall()
-    alle = db.execute("SELECT tijdslot FROM tijdsloten WHERE actief=1 ORDER BY tijdslot").fetchall()
+    dag_nr = str(datetime.strptime(datum, '%Y-%m-%d').weekday())
+    alle = db.execute("SELECT tijdslot, dagen FROM tijdsloten WHERE actief=1 ORDER BY tijdslot").fetchall()
     db.close()
     result = []
     for s in alle:
+        dagen_str = s['dagen'] or ''
+        if dagen_str and dag_nr not in dagen_str.split(','):
+            continue
         start  = slot_min(s['tijdslot'])
         einde  = start + duur
         bezet  = any(
@@ -742,14 +756,14 @@ def eigenaar_kapsel_bewerk(kid):
 @eigenaar_vereist
 def eigenaar_slot_add():
     slot = request.form.get('tijdslot', '').strip()
+    dagen = request.form.get('dagen', '')
     if not re.match(r'^\d{1,2}:\d{2}$', slot):
         return jsonify({'ok': False, 'fout': 'Ongeldig formaat (gebruik UU:MM)'}), 400
-    # Normalize to HH:MM
     h, m = slot.split(':')
     slot = f"{int(h):02d}:{m}"
     db = get_db()
     try:
-        db.execute("INSERT INTO tijdsloten (tijdslot) VALUES (?)", (slot,))
+        db.execute("INSERT INTO tijdsloten (tijdslot, dagen) VALUES (?, ?)", (slot, dagen))
         db.commit()
         ok = True
     except:
@@ -859,9 +873,24 @@ def reset_testdata():
     db.execute("DELETE FROM afspraken")
     db.execute("DELETE FROM feedback")
     db.execute("DELETE FROM geblokkeerde_dagen")
+    db.execute("DELETE FROM tijdsloten")
+    # Maandag(0) en Woensdag(2): 11:00 tot 23:30
+    h, m = 11, 0
+    while h * 60 + m <= 23 * 60 + 30:
+        db.execute("INSERT OR IGNORE INTO tijdsloten (tijdslot, dagen) VALUES (?, ?)",
+                   (f"{h:02d}:{m:02d}", "0,2"))
+        m += 30
+        if m >= 60: h += 1; m -= 60
+    # Andere dagen (Di,Do,Vr,Za,Zo): 21:00 tot 23:00
+    h, m = 21, 0
+    while h * 60 + m <= 23 * 60:
+        db.execute("INSERT OR IGNORE INTO tijdsloten (tijdslot, dagen) VALUES (?, ?)",
+                   (f"{h:02d}:{m:02d}", "1,3,4,5,6"))
+        m += 30
+        if m >= 60: h += 1; m -= 60
     db.commit()
     db.close()
-    return "Klaar — alle testdata verwijderd."
+    return "Klaar — testdata verwijderd en tijdsloten ingesteld."
 
 # ── Scheduler & Run ─────────────────────────────────────────────────────────────
 scheduler = BackgroundScheduler()
