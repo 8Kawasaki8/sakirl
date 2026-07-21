@@ -54,7 +54,8 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS tijdsloten (
             id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            tijdslot TEXT    NOT NULL UNIQUE,
+            tijdslot TEXT    NOT NULL,
+            dagen    TEXT    DEFAULT '',
             actief   INTEGER DEFAULT 1
         );
 
@@ -873,7 +874,15 @@ def reset_testdata():
     db.execute("DELETE FROM afspraken")
     db.execute("DELETE FROM feedback")
     db.execute("DELETE FROM geblokkeerde_dagen")
-    db.execute("DELETE FROM tijdsloten")
+    # Tabel volledig herbouwen zonder UNIQUE (zodat dezelfde tijd op verschillende
+    # dag-groepen kan bestaan, bv. 21:00 op zowel Ma/Wo als andere dagen)
+    db.execute("DROP TABLE IF EXISTS tijdsloten")
+    db.execute("""CREATE TABLE tijdsloten (
+        id       INTEGER PRIMARY KEY AUTOINCREMENT,
+        tijdslot TEXT    NOT NULL,
+        dagen    TEXT    DEFAULT '',
+        actief   INTEGER DEFAULT 1
+    )""")
 
     INTERVAL = 50   # minuten tussen elke afspraak
     BUFFER   = 45   # langste knipbeurt: laatste afspraak moet af zijn voor sluitingstijd
@@ -881,7 +890,7 @@ def reset_testdata():
     def genereer(open_min, sluit_min, dagen):
         t = open_min
         while t + BUFFER <= sluit_min:
-            db.execute("INSERT OR IGNORE INTO tijdsloten (tijdslot, dagen) VALUES (?, ?)",
+            db.execute("INSERT INTO tijdsloten (tijdslot, dagen) VALUES (?, ?)",
                        (f"{t//60:02d}:{t%60:02d}", dagen))
             t += INTERVAL
 
