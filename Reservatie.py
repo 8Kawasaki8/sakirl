@@ -874,23 +874,25 @@ def reset_testdata():
     db.execute("DELETE FROM feedback")
     db.execute("DELETE FROM geblokkeerde_dagen")
     db.execute("DELETE FROM tijdsloten")
-    # Maandag(0) en Woensdag(2): 11:00 tot 23:30
-    h, m = 11, 0
-    while h * 60 + m <= 23 * 60 + 30:
-        db.execute("INSERT OR IGNORE INTO tijdsloten (tijdslot, dagen) VALUES (?, ?)",
-                   (f"{h:02d}:{m:02d}", "0,2"))
-        m += 30
-        if m >= 60: h += 1; m -= 60
-    # Andere dagen (Di,Do,Vr,Za,Zo): 21:00 tot 23:00
-    h, m = 21, 0
-    while h * 60 + m <= 23 * 60:
-        db.execute("INSERT OR IGNORE INTO tijdsloten (tijdslot, dagen) VALUES (?, ?)",
-                   (f"{h:02d}:{m:02d}", "1,3,4,5,6"))
-        m += 30
-        if m >= 60: h += 1; m -= 60
+
+    INTERVAL = 50   # minuten tussen elke afspraak
+    BUFFER   = 45   # langste knipbeurt: laatste afspraak moet af zijn voor sluitingstijd
+
+    def genereer(open_min, sluit_min, dagen):
+        t = open_min
+        while t + BUFFER <= sluit_min:
+            db.execute("INSERT OR IGNORE INTO tijdsloten (tijdslot, dagen) VALUES (?, ?)",
+                       (f"{t//60:02d}:{t%60:02d}", dagen))
+            t += INTERVAL
+
+    # Maandag(0) en Woensdag(2): open 11:00, sluit 23:30
+    genereer(11*60, 23*60+30, "0,2")
+    # Andere dagen (Di,Do,Vr,Za,Zo): open 21:00, sluit 23:20
+    genereer(21*60, 23*60+20, "1,3,4,5,6")
+
     db.commit()
     db.close()
-    return "Klaar — testdata verwijderd en tijdsloten ingesteld."
+    return "Klaar — testdata verwijderd en tijdsloten ingesteld (50 min interval)."
 
 # ── Scheduler & Run ─────────────────────────────────────────────────────────────
 scheduler = BackgroundScheduler()
