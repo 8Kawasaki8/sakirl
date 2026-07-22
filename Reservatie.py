@@ -885,18 +885,17 @@ def reset_testdata():
     )""")
 
     INTERVAL = 50   # minuten tussen elke afspraak
-    BUFFER   = 45   # langste knipbeurt: laatste afspraak moet af zijn voor sluitingstijd
 
-    def genereer(open_min, sluit_min, dagen):
+    def genereer(open_min, laatste_min, dagen):
         t = open_min
-        while t + BUFFER <= sluit_min:
+        while t <= laatste_min:
             db.execute("INSERT INTO tijdsloten (tijdslot, dagen) VALUES (?, ?)",
                        (f"{t//60:02d}:{t%60:02d}", dagen))
             t += INTERVAL
 
-    # Maandag(0) en Woensdag(2): open 11:00, sluit 23:30
+    # Maandag(0) en Woensdag(2): 11:00 tot 23:30
     genereer(11*60, 23*60+30, "0,2")
-    # Andere dagen (Di,Do,Vr,Za,Zo): open 21:00, sluit 23:20
+    # Andere dagen (Di,Do,Vr,Za,Zo): 21:00 tot 23:20
     genereer(21*60, 23*60+20, "1,3,4,5,6")
 
     db.commit()
