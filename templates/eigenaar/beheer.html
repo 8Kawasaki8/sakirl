@@ -72,20 +72,20 @@
     {% endif %}
 
     <div class="voeg-slot-form" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-        <input type="text" id="nieuw-slot" placeholder="bv. 13:00" maxlength="5" style="max-width:110px;">
-        <div>
-          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;font-weight:600;">Beschikbaar op:</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;" id="dag-checkboxes">
-            {% for nr, naam in [('0','Ma'),('1','Di'),('2','Wo'),('3','Do'),('4','Vr'),('5','Za'),('6','Zo')] %}
-            <label style="font-size:0.8rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
-              <input type="checkbox" value="{{ nr }}" class="dag-check"> {{ naam }}
-            </label>
-            {% endfor %}
-          </div>
-        </div>
-        <button class="btn" onclick="voegSlotToe()">+ Toevoegen</button>
+      <div class="form-group" style="max-width:160px;margin-bottom:14px;">
+        <label>Tijd</label>
+        <input type="text" id="nieuw-slot" placeholder="bv. 13:00" maxlength="5">
       </div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Beschikbaar op welke dagen?</div>
+      <div class="dag-keuze" id="dag-checkboxes">
+        {% for nr, naam in [('0','Maandag'),('1','Dinsdag'),('2','Woensdag'),('3','Donderdag'),('4','Vrijdag'),('5','Zaterdag'),('6','Zondag')] %}
+        <label class="dag-pill">
+          <input type="checkbox" value="{{ nr }}" class="dag-check">
+          <span>{{ naam }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <button class="btn" onclick="voegSlotToe()" style="margin-top:16px;">+ Tijdslot toevoegen</button>
     </div>
   </div>
 </div>
@@ -170,7 +170,10 @@ async function verwijderKapsel(id) {
 // ── Tijdsloten ─────────────────────────────────────────────────────────────────
 async function voegSlotToe() {
   const slot  = document.getElementById('nieuw-slot').value.trim();
-  const dagen = [...document.querySelectorAll('.dag-check:checked')].map(c => c.value).join(',');
+  const gekozen = [...document.querySelectorAll('.dag-check:checked')];
+  if (!slot) { alert('Vul een tijd in (bv. 13:00).'); return; }
+  if (gekozen.length === 0) { alert('Kies minstens één dag.'); return; }
+  const dagen = gekozen.map(c => c.value).join(',');
   const res   = await fetch('/eigenaar/tijdsloten/add', {
     method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
     body: `tijdslot=${encodeURIComponent(slot)}&dagen=${encodeURIComponent(dagen)}`
@@ -184,15 +187,24 @@ async function voegSlotToe() {
   }
 }
 
+// Dag-knopjes: markeer geselecteerde dagen (fallback voor browsers zonder :has())
+document.querySelectorAll('.dag-pill input').forEach(inp => {
+  inp.addEventListener('change', () => {
+    inp.closest('.dag-pill').classList.toggle('aan', inp.checked);
+  });
+});
+
 async function verwijderSlot(id, btn) {
   const res = await fetch(`/eigenaar/tijdsloten/${id}/verwijder`, { method: 'POST' });
   if ((await res.json()).ok) btn.closest('.slot-rij').remove();
 }
 
 // Sluit modal bij klik buiten
-document.getElementById('bewerk-modal').addEventListener('click', e => {
-  if (e.target === document.getElementById('bewerk-modal'))
-    document.getElementById('bewerk-modal').style.display = 'none';
-});
+const _modal = document.getElementById('bewerk-modal');
+if (_modal) {
+  _modal.addEventListener('click', e => {
+    if (e.target === _modal) _modal.style.display = 'none';
+  });
+}
 </script>
 {% endblock %}
