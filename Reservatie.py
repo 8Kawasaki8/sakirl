@@ -873,6 +873,11 @@ def eigenaar_manifest():
         ]
     }), mimetype='application/json')
 
+@app.route('/reset-wachtwoord-saki2026')
+def reset_wachtwoord():
+    set_instelling('wachtwoord_hash', generate_password_hash('barber2024'))
+    return "Wachtwoord teruggezet naar: barber2024"
+
 @app.route('/reset-testdata-saki2026')
 def reset_testdata():
     db = get_db()
