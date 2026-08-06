@@ -797,7 +797,7 @@ def eigenaar_instellingen():
             bericht = ('succes', 'Naam opgeslagen.')
         elif actie == 'email':
             email = request.form.get('smtp_email', '').strip()
-            wacht = request.form.get('smtp_wachtwoord', '').strip()
+            wacht = request.form.get('smtp_wachtwoord', '').replace(' ', '').strip()
             set_instelling('smtp_email', email)
             if wacht:
                 set_instelling('smtp_wachtwoord', wacht)
