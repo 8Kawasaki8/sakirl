@@ -39,7 +39,9 @@
 
     {% if afspraak.email %}
     <div class="herinnering-info">
-      Je ontvangt de dag voor je afspraak een herinnering op <strong>{{ afspraak.email }}</strong>.
+      We hebben een bevestiging gestuurd naar <strong>{{ afspraak.email }}</strong>.
+      Je ontvangt ook de dag voor je afspraak een herinnering.
+      <br><small style="opacity:0.8;">(Zie je niets? Controleer je spam- of reclamemap.)</small>
     </div>
     {% endif %}
 

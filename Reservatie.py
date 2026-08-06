@@ -4,7 +4,7 @@ Run:  python Reservatie.py
 Deps: pip install flask apscheduler werkzeug
 """
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
-import sqlite3, os, secrets, smtplib, atexit, json, re
+import sqlite3, os, secrets, smtplib, atexit, json, re, threading
 from datetime import datetime, date, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -195,7 +195,7 @@ def stuur_email(aan, onderwerp, html_body, tekst_body=''):
         if tekst_body:
             msg.attach(MIMEText(tekst_body, 'plain'))
         msg.attach(MIMEText(html_body, 'html'))
-        with smtplib.SMTP(server, poort) as s:
+        with smtplib.SMTP(server, poort, timeout=15) as s:
             s.starttls()
             s.login(van, wacht)
             s.sendmail(van, aan, msg.as_string())
@@ -463,10 +463,15 @@ def boeken_post():
     db.commit()
     db.close()
 
-    # Stuur bevestigingsmail
+    # Stuur bevestigingsmail in de achtergrond zodat de bevestigingspagina
+    # altijd meteen verschijnt (ook als de mailserver traag is of vasthangt)
     if email:
         kapper_naam = get_instelling('kapper_naam') or 'Uw Kapper'
-        mail_bevestiging(naam, email, kapsel_naam, datum, tijdslot, kapper_naam)
+        threading.Thread(
+            target=mail_bevestiging,
+            args=(naam, email, kapsel_naam, datum, tijdslot, kapper_naam),
+            daemon=True
+        ).start()
 
     return redirect(url_for('bevestiging', token=token))
 
