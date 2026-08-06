@@ -267,8 +267,8 @@
 }
 .slot-verwijder { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; padding: 0 2px; transition: color 0.2s; }
 .slot-verwijder:hover { color: var(--red); }
-.voeg-slot-form { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
-.voeg-slot-form input { max-width: 100px; }
+.voeg-slot-form { display: block; margin-top: 12px; }
+.voeg-slot-form #nieuw-slot { max-width: 160px; }
 
 /* ── Form fields in eigenaar ──────────────────────────────────────────────── */
 .form-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
