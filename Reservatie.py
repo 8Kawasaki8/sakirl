@@ -873,45 +873,6 @@ def eigenaar_manifest():
         ]
     }), mimetype='application/json')
 
-@app.route('/reset-wachtwoord-saki2026')
-def reset_wachtwoord():
-    set_instelling('wachtwoord_hash', generate_password_hash('barber2024'))
-    return "Wachtwoord teruggezet naar: barber2024"
-
-@app.route('/reset-testdata-saki2026')
-def reset_testdata():
-    db = get_db()
-    db.execute("DELETE FROM afspraken")
-    db.execute("DELETE FROM feedback")
-    db.execute("DELETE FROM geblokkeerde_dagen")
-    # Tabel volledig herbouwen zonder UNIQUE (zodat dezelfde tijd op verschillende
-    # dag-groepen kan bestaan, bv. 21:00 op zowel Ma/Wo als andere dagen)
-    db.execute("DROP TABLE IF EXISTS tijdsloten")
-    db.execute("""CREATE TABLE tijdsloten (
-        id       INTEGER PRIMARY KEY AUTOINCREMENT,
-        tijdslot TEXT    NOT NULL,
-        dagen    TEXT    DEFAULT '',
-        actief   INTEGER DEFAULT 1
-    )""")
-
-    INTERVAL = 50   # minuten tussen elke afspraak
-
-    def genereer(open_min, laatste_min, dagen):
-        t = open_min
-        while t <= laatste_min:
-            db.execute("INSERT INTO tijdsloten (tijdslot, dagen) VALUES (?, ?)",
-                       (f"{t//60:02d}:{t%60:02d}", dagen))
-            t += INTERVAL
-
-    # Maandag(0) en Woensdag(2): 11:00 tot 23:30
-    genereer(11*60, 23*60+30, "0,2")
-    # Andere dagen (Di,Do,Vr,Za,Zo): 21:00 tot 23:20
-    genereer(21*60, 23*60+20, "1,3,4,5,6")
-
-    db.commit()
-    db.close()
-    return "Klaar — testdata verwijderd en tijdsloten ingesteld (50 min interval)."
-
 # ── Scheduler & Run ─────────────────────────────────────────────────────────────
 scheduler = BackgroundScheduler()
 scheduler.add_job(dagelijkse_herinneringen, 'cron', hour=9, minute=0)
