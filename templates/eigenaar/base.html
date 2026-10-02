@@ -50,7 +50,7 @@ document.getElementById('nav-toggle')?.addEventListener('click', () => {
   document.getElementById('nav-links').classList.toggle('open');
 });
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/static/sw.js');
+  navigator.serviceWorker.register('/sw.js', { scope: '/' });
 }
 </script>
 {% block scripts %}{% endblock %}

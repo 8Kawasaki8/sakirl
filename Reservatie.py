@@ -4,7 +4,7 @@ Run:  python Reservatie.py
 Deps: pip install flask apscheduler werkzeug
 """
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
-import sqlite3, os, secrets, smtplib, atexit, json, re, threading
+import sqlite3, os, secrets, smtplib, atexit, json, re, threading, base64
 from datetime import datetime, date, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -78,6 +78,11 @@ def init_db():
         CREATE TABLE IF NOT EXISTS instellingen (
             sleutel TEXT PRIMARY KEY,
             waarde  TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            endpoint TEXT PRIMARY KEY,
+            sub_json TEXT NOT NULL
         );
     """)
     # Migratie: dagen kolom toevoegen als die nog niet bestaat
@@ -265,6 +270,70 @@ def mail_bevestiging(naam, email, kapsel, datum, tijdslot, kapper_naam):
   </div>
 </div>"""
     return stuur_email(email, f"Afspraak bevestigd bij {kapper_naam}", html)
+
+# ── Push-meldingen (Web Push) ───────────────────────────────────────────────────
+def ensure_vapid_keys():
+    """Genereer eenmalig VAPID-sleutels en bewaar ze in de instellingen."""
+    priv = get_instelling('vapid_private')
+    pub  = get_instelling('vapid_public')
+    if priv and pub:
+        return priv, pub
+    try:
+        from py_vapid import Vapid01
+        from cryptography.hazmat.primitives import serialization
+    except ImportError:
+        return '', ''
+    v = Vapid01()
+    v.generate_keys()
+    priv_pem = v.private_pem()
+    if isinstance(priv_pem, bytes):
+        priv_pem = priv_pem.decode('utf-8')
+    raw_pub = v.public_key.public_bytes(
+        serialization.Encoding.X962,
+        serialization.PublicFormat.UncompressedPoint
+    )
+    pub_b64 = base64.urlsafe_b64encode(raw_pub).decode('utf-8').rstrip('=')
+    set_instelling('vapid_private', priv_pem)
+    set_instelling('vapid_public', pub_b64)
+    return priv_pem, pub_b64
+
+def stuur_push(titel, bericht):
+    """Stuur een pushmelding naar alle geregistreerde toestellen van de kapper."""
+    try:
+        from pywebpush import webpush, WebPushException
+        from py_vapid import Vapid01
+    except ImportError:
+        return
+    priv, _ = ensure_vapid_keys()
+    if not priv:
+        return
+    try:
+        vapid = Vapid01.from_pem(priv.encode('utf-8'))
+    except Exception as e:
+        print(f"[Push] VAPID-fout: {e}")
+        return
+    db = get_db()
+    subs = db.execute("SELECT endpoint, sub_json FROM push_subscriptions").fetchall()
+    db.close()
+    payload = json.dumps({'title': titel, 'body': bericht})
+    for s in subs:
+        try:
+            webpush(
+                subscription_info=json.loads(s['sub_json']),
+                data=payload,
+                vapid_private_key=vapid,
+                vapid_claims={"sub": "mailto:admin@reservatie.xyz"}
+            )
+        except WebPushException as e:
+            code = getattr(e.response, 'status_code', None)
+            if code in (404, 410):  # abonnement vervallen → opruimen
+                dbx = get_db()
+                dbx.execute("DELETE FROM push_subscriptions WHERE endpoint=?", (s['endpoint'],))
+                dbx.commit(); dbx.close()
+            else:
+                print(f"[Push fout] {e}")
+        except Exception as e:
+            print(f"[Push fout] {e}")
 
 def dagelijkse_herinneringen():
     morgen = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
@@ -472,6 +541,19 @@ def boeken_post():
             args=(naam, email, kapsel_naam, datum, tijdslot, kapper_naam),
             daemon=True
         ).start()
+
+    # Pushmelding naar de kapper (achtergrond zodat de klant niet moet wachten)
+    try:
+        d = datetime.strptime(datum, '%Y-%m-%d')
+        dag_nl = ['ma','di','wo','do','vr','za','zo'][d.weekday()]
+        datum_kort = f"{dag_nl} {d.day}/{d.month}"
+    except Exception:
+        datum_kort = datum
+    threading.Thread(
+        target=stuur_push,
+        args=("Nieuwe afspraak", f"{naam} — {datum_kort} om {tijdslot} ({kapsel_naam})"),
+        daemon=True
+    ).start()
 
     return redirect(url_for('bevestiging', token=token))
 
@@ -872,6 +954,41 @@ def eigenaar_manifest():
             {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"}
         ]
     }), mimetype='application/json')
+
+# ── Service worker vanaf de root (scope '/') ────────────────────────────────────
+@app.route('/sw.js')
+def service_worker():
+    from flask import send_from_directory, make_response
+    resp = make_response(send_from_directory(os.path.join(BASE_DIR, 'static'), 'sw.js'))
+    resp.headers['Content-Type'] = 'application/javascript'
+    resp.headers['Service-Worker-Allowed'] = '/'
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
+
+# ── Push-endpoints ──────────────────────────────────────────────────────────────
+@app.route('/eigenaar/push/public-key')
+@eigenaar_vereist
+def push_public_key():
+    _, pub = ensure_vapid_keys()
+    return jsonify({'key': pub})
+
+@app.route('/eigenaar/push/subscribe', methods=['POST'])
+@eigenaar_vereist
+def push_subscribe():
+    sub = request.get_json(silent=True)
+    if not sub or 'endpoint' not in sub:
+        return jsonify({'ok': False}), 400
+    db = get_db()
+    db.execute("INSERT OR REPLACE INTO push_subscriptions (endpoint, sub_json) VALUES (?, ?)",
+               (sub['endpoint'], json.dumps(sub)))
+    db.commit(); db.close()
+    return jsonify({'ok': True})
+
+@app.route('/eigenaar/push/test', methods=['POST'])
+@eigenaar_vereist
+def push_test():
+    stuur_push("Testmelding", "Als je dit ziet werken je meldingen!")
+    return jsonify({'ok': True})
 
 # ── Scheduler & Run ─────────────────────────────────────────────────────────────
 scheduler = BackgroundScheduler()

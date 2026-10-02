@@ -92,6 +92,20 @@
     </div>
     <p id="pwa-instructie" class="e-hint">Open deze pagina in Chrome op je telefoon om de app te installeren.</p>
   </div>
+
+  <!-- ── Meldingen ──────────────────────────────────────────────────────────── -->
+  <div class="e-card instelling-sectie">
+    <div class="e-card-header"><h2>Meldingen op je telefoon</h2></div>
+    <p class="e-hint" style="margin-bottom:14px;">
+      Krijg meteen een melding op je telefoon zodra een klant een afspraak boekt — ook als de app dicht is.
+      <br><strong>Op iPhone:</strong> voeg eerst de app toe aan je beginscherm, open hem via dat icoon, en zet dan hieronder de meldingen aan (werkt vanaf iOS 16.4).
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn" id="meldingen-btn" onclick="zetMeldingenAan()">Meldingen aanzetten</button>
+      <button class="btn btn-ghost" id="meldingen-test-btn" onclick="stuurTestMelding()" style="display:none;">Test-melding</button>
+    </div>
+    <div id="meldingen-status" style="margin-top:12px;font-size:0.9rem;"></div>
+  </div>
 </div>
 {% endblock %}
 
@@ -140,6 +154,74 @@ document.getElementById('pwa-install-btn')?.addEventListener('click', async () =
 if (window.matchMedia('(display-mode: standalone)').matches) {
   document.getElementById('pwa-geinstalleerd').style.display = 'block';
   document.getElementById('pwa-instructie').style.display    = 'none';
+}
+
+// ── Pushmeldingen ───────────────────────────────────────────────────────────────
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+async function zetMeldingenAan() {
+  const status = document.getElementById('meldingen-status');
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    status.style.color = 'var(--red)';
+    status.textContent = '✗ Meldingen worden niet ondersteund. Op iPhone: voeg de app eerst toe aan je beginscherm (iOS 16.4 of nieuwer) en open hem via dat icoon.';
+    return;
+  }
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Bezig…';
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      status.style.color = 'var(--red)';
+      status.textContent = '✗ Meldingen geweigerd. Zet ze aan via je telefooninstellingen.';
+      return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const res = await fetch('/eigenaar/push/public-key');
+    const { key } = await res.json();
+    if (!key) { throw new Error('Geen sleutel van de server.'); }
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key)
+    });
+    await fetch('/eigenaar/push/subscribe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub)
+    });
+    status.style.color = 'var(--green)';
+    status.textContent = '✓ Meldingen staan aan! Je krijgt een bericht bij elke nieuwe afspraak.';
+    document.getElementById('meldingen-test-btn').style.display = 'inline-flex';
+  } catch (e) {
+    status.style.color = 'var(--red)';
+    status.textContent = '✗ Er ging iets mis: ' + (e.message || e);
+  }
+}
+
+async function stuurTestMelding() {
+  const status = document.getElementById('meldingen-status');
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Test-melding wordt verstuurd…';
+  await fetch('/eigenaar/push/test', { method: 'POST' });
+  status.textContent = 'Test-melding verstuurd — check je telefoon over enkele seconden.';
+}
+
+// Al geabonneerd? Toon dat meteen.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.ready.then(async reg => {
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      document.getElementById('meldingen-test-btn').style.display = 'inline-flex';
+      const status = document.getElementById('meldingen-status');
+      status.style.color = 'var(--green)';
+      status.textContent = '✓ Meldingen staan aan op dit toestel.';
+    }
+  }).catch(() => {});
 }
 </script>
 {% endblock %}
